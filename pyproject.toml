@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "movensys-imitation"
+version = "0.1.0"
+description = "ACT, Diffusion Policy and Flow Matching compared on PushT with the Dobot CR3A through WMX-R2."
+readme = "README.md"
+license = { file = "LICENSE.txt" }
+requires-python = ">=3.12"
+authors = [{ name = "Mohsin Ali (MVSK)", email = "mali@movensys.com" }]
+# torch / torchvision are installed first from the cu128 index (scripts/setup_venv.sh);
+# LeRobot's own pins (torch >= 2.7, < 2.12) are then already satisfied.
+dependencies = [
+    "lerobot[pusht,diffusers-dep,dataset,training]==0.6.1",
+    "shapely>=2.0",
+    "pyyaml>=6",
+    "pygame>=2.5",
+    # Shadow apt packages that are built against numpy 1.26 and would otherwise leak in through
+    # --system-site-packages (diffusers imports scipy.stats).
+    "scipy>=1.13",
+    "matplotlib>=3.8",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+viz = ["rerun-sdk"]
+
+[project.scripts]
+movensys-train = "movensys_imitation.cli.train:main"
+movensys-eval = "movensys_imitation.cli.eval:main"
+
+[tool.setuptools.packages.find]
+include = ["movensys_imitation*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["movensys_imitation_ros"]   # the ROS package is linted with ament_flake8
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["movensys_imitation/tests"]
+# The apt launch_testing pytest plugin (visible through --system-site-packages) is incompatible
+# with pytest 8; it is only needed for colcon test of the ROS package.
+addopts = "-p no:launch_testing -p no:launch_ros"
+markers = [
+    "lerobot: needs torch and lerobot installed (skipped in CI)",
+    "gpu: needs a CUDA device (skipped in CI)",
+]
