@@ -98,12 +98,12 @@ Goal: a reliable benchmark and a tested Flow Matching policy before any robot-sp
 
 | ID | Task | Owner | Done when | Status |
 |---|---|---|---|---|
-| P1.1 | Implement `flow_matching_unet` (Section 6) with unit tests: shapes, loss decreases on synthetic data, 1-step and 16-step samplers finite and seed-deterministic, 2-D toy velocity field matches Meta's `flow_matching` library. | M | Tests pass | |
-| P1.2 | `movensys-train` and `movensys-eval` entry points that register the policy and call LeRobot's mains; YAMLs for the three policies. | M | `--policy.type=flow_matching_unet` resolves | |
+| P1.1 | Implement `flow_matching_unet` (Section 6) with unit tests: shapes, loss decreases on synthetic data, 1-step and 16-step samplers finite and seed-deterministic, 2-D toy velocity field matches Meta's `flow_matching` library. | M | Tests pass | Done 2026-10-14: `movensys_imitation/policies/flow_matching_unet/`, 15 tests pass (`test_flow_matching_unet.py`) |
+| P1.2 | `movensys-train` and `movensys-eval` entry points that register the policy and call LeRobot's mains; YAMLs for the three policies. | M | `--policy.type=flow_matching_unet` resolves | Done 2026-10-14: `configs/{pusht_gym,diffusion,flow_matching,act}.yaml`, comma-separated `--config_path`; 300-step smoke train, reload and eval of `flow_matching_unet` passed |
 | P1.3 | Reference run: Diffusion on `lerobot/pusht`, 200 k steps, 50 eval episodes. | M | Success within the 65 % band of the model card | Done 2026-10-14: 58 % final eval (64 % at the step-200k in-training eval), 50 episodes, 4.5 h on one GPU; `scripts/ref_diffusion_pusht.sh`, outputs in `outputs/ref_diffusion_pusht/` |
-| P1.4 | Benchmark: ACT (default horizon and matched 16/8, with and without VAE), Diffusion (DDIM 10, DDPM 100 at inference), Flow Matching (Euler 1, 2, 4, 8, 16 at inference). 100 k steps, batch 64, 3 seeds, 50 fixed episodes each. Record train time, peak VRAM, latency mean and p95. | M | Table R1 filled | |
-| P1.5 | `compare.py` builds tables and plots from the eval CSVs; freeze hyperparameters for the robot phases. | M | Frozen configs committed | |
-| P1.6 | Convert `lerobot/pusht` into the recorder's schema (Section 6, pixel units) to prove the feature definitions train. | M | One training run on the converted set | |
+| P1.4 | Benchmark: ACT (default horizon and matched 16/8, with and without VAE), Diffusion (DDIM 10, DDPM 100 at inference), Flow Matching (Euler 1, 2, 4, 8, 16 at inference). 100 k steps, batch 64, 3 seeds, 50 fixed episodes each. Record train time, peak VRAM, latency mean and p95. | M | Table R1 filled | Running since 2026-10-14: `scripts/benchmark_gym.sh` (`movensys-benchmark`), 18 trainings, about 35 GPU hours; CSVs land in `results/gym/` |
+| P1.5 | `compare.py` builds tables and plots from the eval CSVs; freeze hyperparameters for the robot phases. | M | Frozen configs committed | `movensys-compare` written and tested on a smoke matrix 2026-10-14; freeze after P1.4 finishes |
+| P1.6 | Convert `lerobot/pusht` into the recorder's schema (Section 6, pixel units) to prove the feature definitions train. | M | One training run on the converted set | Done 2026-10-14: `movensys-convert-gym` (`data/convert_gym_pusht.py`), Diffusion trains on the converted set (`doc/3_gym_pusht.md`) |
 
 Exit: three policies train and evaluate in one harness; Diffusion reproduces the published range; Flow Matching with 4 to 8 Euler steps is within noise of Diffusion; configs frozen and not re-tuned afterwards.
 
