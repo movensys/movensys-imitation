@@ -1,0 +1,52 @@
+name: Lint and unit tests
+
+on:
+  pull_request:
+    branches: [main, devel]
+  push:
+    branches: [main, devel]
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  python-library:
+    name: ruff + pytest (movensys_imitation)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install lint and test tooling (library only, no torch)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ruff pytest numpy shapely pyyaml
+          python -m pip install -e . --no-deps
+      - name: ruff
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: pytest (tests that do not need torch or a GPU)
+        run: pytest -m "not lerobot and not gpu"
+
+  ros-package:
+    name: ament_flake8 + ament_xmllint (movensys_imitation_ros, jazzy)
+    runs-on: ubuntu-24.04
+    container: ros:jazzy-ros-base
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install lint tooling
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            ros-jazzy-ament-flake8 ros-jazzy-ament-xmllint
+      - name: ament_flake8
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          ament_flake8 --config ament_flake8.ini movensys_imitation_ros
+      - name: ament_xmllint
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          ament_xmllint movensys_imitation_ros/package.xml

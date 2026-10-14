@@ -81,8 +81,8 @@ Goal: prove the existing stack, the ML environment and the WMX streaming path wo
 
 | ID | Task | Owner | Done when | Status |
 |---|---|---|---|---|
-| P0.1 | Create the repo layout (Section 5), MIT licence, lint workflow, `.gitignore` for `datasets/ outputs/ .venv/ wandb/`. | M | CI green on an empty package | |
-| P0.2 | Build the venv (Appendix A) and run the smoke test: 500 steps of Diffusion on `lerobot/pusht`, then eval 5 episodes. | M | `torch.cuda.is_available()` true, eval prints a success rate, `import rclpy` works in the venv | |
+| P0.1 | Create the repo layout (Section 5), MIT licence, lint workflow, `.gitignore` for `datasets/ outputs/ .venv/ wandb/`. | M | CI green on an empty package | Done 2026-10-13 (ruff, ament_flake8, ament_xmllint, pytest pass locally; CI runs on first push) |
+| P0.2 | Build the venv (Appendix A) and run the smoke test: 500 steps of Diffusion on `lerobot/pusht`, then eval 5 episodes. | M | `torch.cuda.is_available()` true, eval prints a success rate, `import rclpy` works in the venv | Done 2026-10-13 (torch 2.11+cu128, LeRobot 0.6.1; six environment issues fixed, see `doc/1_setup.md`) |
 | P0.3 | Switch `movensys-manipulator` to `origin/devel`, add `ros-jazzy-moveit-servo` to the `isaac-ros_4.1` Dockerfile, build and start the manipulator container with `ROS_DOMAIN_ID=70` from the host shell. | C | `ros2 service type /servo_node/switch_command_type` returns `moveit_msgs/srv/ServoCommandType` | |
 | P0.4 | Open `3a_trajectory_simulation.usd` in Isaac Sim, start `sim_bridge` and `moveit` with `use_sim_time:=true`, move the arm with `keyboard_teleop` in `p` mode. | C | Arm moves in Isaac from the keyboard | |
 | P0.5 | Build the teleop container, install the CloudXR runtime from NGC, run `quest_pose.launch.py`, connect the Quest, then run `quest_servo_teleop.launch.py motion_mode:=planar` in sim. | C | `/quest_pose_publisher/controller_pose_right` at about 55 Hz; arm follows the hand in Isaac | |
@@ -365,7 +365,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 source /opt/ros/jazzy/setup.bash && cd ~/workspaces/movensys-imitation
 uv venv --python 3.12 --system-site-packages .venv && source .venv/bin/activate
 uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128      # RTX 5090 needs cu128
-uv pip install "lerobot[pusht,diffusers-dep,dataset]==0.6.1" shapely rerun-sdk pygame && uv pip install -e .
+uv pip install -e ".[dev,viz]"      # lerobot[pusht,diffusers-dep,dataset,training]==0.6.1, scipy, matplotlib, shapely, pygame, pytest, ruff
 python -c "import torch, lerobot, rclpy, numpy; print(torch.cuda.is_available(), lerobot.__version__, numpy.__version__)"
 ```
 
