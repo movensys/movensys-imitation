@@ -1,0 +1,86 @@
+{
+  "scene": "9a_pusht_simulation.usd",
+  "base_scene": "/home/robotics/workspaces/movensys-simulation/dobot_cr3a/3a_trajectory_simulation.usd",
+  "frames": {
+    "sheet_prim": "/World/pusht",
+    "sheet_in_world_manipulator": {
+      "xy": [
+        -0.03,
+        -0.08
+      ],
+      "z": 0.04312009157810337,
+      "yaw": 0.0
+    },
+    "world_manipulator_in_World": {
+      "xy": [
+        0.0,
+        0.0
+      ],
+      "z": 0.0,
+      "yaw_deg": 90.0
+    },
+    "robot_base_in_world_manipulator": [
+      -0.03,
+      0.275,
+      0.05
+    ]
+  },
+  "table_top_z_world_manipulator": 0.04312009157810337,
+  "push_area": {
+    "size_m": 0.45,
+    "center_wm": [
+      -0.03,
+      -0.08
+    ]
+  },
+  "block_prim": "/World/pusht/t_block",
+  "block_rest_z_in_sheet": 0.0,
+  "markers": "none (plan v2.1); real scoring is in overhead pixel space",
+  "block_rgb": [
+    120,
+    120,
+    120
+  ],
+  "teleport": {
+    "topic": "/pusht/t_block/pose_cmd",
+    "frame": "sheet",
+    "z_hint": 0.001
+  },
+  "pose_topic": {
+    "topic": "/pusht/t_block/pose",
+    "frame": "sheet",
+    "rate_hz": 30
+  },
+  "pusher_tip": {
+    "prim": "/World/movensys_manipulator/Link6/pusher_tip",
+    "radius_m": 0.01,
+    "length_m": 0.08,
+    "link6_to_tip_bottom_m": 0.22000000000000003,
+    "eef_z_setpoint_wm": 0.2731200915781034,
+    "note": "Link6 z in world_manipulator that puts the tip bottom 10 mm above the table"
+  },
+  "camera": {
+    "link_prim": "/World/camera_top_link",
+    "camera_prim": "/World/camera_top_link/camera_top",
+    "model_prim": "/World/camera_top_link/RSD455/Camera_OmniVision_OV9782_Color",
+    "height_above_table_m": 0.7,
+    "topics": [
+      "/image_top/rgb",
+      "/image_top/camera_info"
+    ],
+    "frame_id": "camera_top_color_optical_frame",
+    "resolution": [
+      1280,
+      720
+    ],
+    "rate_hz": 30,
+    "image_axes": "image +x = sheet +x, image up = sheet +y (robot at the top of the image)"
+  },
+  "graphs": [
+    "/Graph/pusht_t_block_pose",
+    "/Graph/pusht_t_block_pose_cmd",
+    "/Graph/ROS_Camera_Top",
+    "/Graph/ROS_JointStates",
+    "/Graph/ROS_Clock"
+  ]
+}
