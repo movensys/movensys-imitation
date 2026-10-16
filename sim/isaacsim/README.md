@@ -14,8 +14,9 @@ into the script (or its flags) and the scene is regenerated.
 | `scene_9a.json` | numbers the ROS side needs: sheet frame pose, table height, tip offset, EEF z setpoint, camera, topics |
 | `build_scene.py` | builds the scene with Isaac Sim's Python (see below) |
 | `make_assets.py` | draws `assets/target_sheet.png` and writes `assets/pusht_sheet.json` |
+| `make_usd_assets.py` | writes `assets/t_block.usd` and `assets/pusher_tip.usd`, standalone referenceable copies of the T and the tip |
 | `smoke_check.py` | ROS 2 check of the running scene: topic rates, image format, teleport round trip |
-| `assets/` | the sheet texture, the sheet spec, `overhead_sample.png` (a downscaled `/image_top/rgb` frame) |
+| `assets/` | the sheet texture, the sheet spec, `t_block.usd`, `pusher_tip.usd`, `overhead_sample.png` (a downscaled `/image_top/rgb` frame) |
 
 The task geometry (T proportions, goal pose, start-state sampler) lives in
 `movensys_imitation/tasks/pusht/geometry.py` and is the single source for the artwork, the scene
@@ -28,6 +29,7 @@ artwork is thin and coloured (green outline, blue marks) so a grey threshold ign
 ```bash
 # 1. textures and sheet spec (project venv)
 python sim/isaacsim/make_assets.py
+python sim/isaacsim/make_usd_assets.py        # standalone T block and pusher tip USD (needs usd-core: pip install -e '.[sim]')
 
 # 2. the scene (Isaac Sim's Python, system ROS 2 Jazzy sourced so the bridge loads)
 source /opt/ros/jazzy/setup.bash
@@ -37,6 +39,13 @@ source /opt/ros/jazzy/setup.bash
 # 3. with the scene playing (GUI or --play), in the project venv
 python sim/isaacsim/smoke_check.py --image /tmp/top.png
 ```
+
+`build_scene.py` still authors the T and the tip inline; the two files in `assets/` are the same
+geometry, materials and physics as standalone USD (ASCII `.usd`, default prim set) for other
+scenes. `t_block.usd`: origin at the bar-stem junction on the bottom face, rigid body, 0.25 kg.
+`pusher_tip.usd`: origin at the mount face, cylinder along +z; under `Link6` place it at
+z = 0.14 so the tip bottom is at 0.22 m. Reference them with
+`prim.GetReferences().AddReference("./assets/t_block.usd")`.
 
 `build_scene.py --help` lists the flags: `--center-wm X Y` (push-area centre in `world_manipulator`,
 default `-0.03 -0.08`, to be fixed after the reach check), `--camera-height` (0.70 m) and

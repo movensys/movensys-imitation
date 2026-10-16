@@ -26,6 +26,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.6", "flow-matching>=1.0"]   # flow-matching: reference for the P1.1 tests
 viz = ["rerun-sdk"]
+sim = ["usd-core>=24.11"]   # pxr for sim/isaacsim/make_usd_assets.py without Isaac Sim
 
 [project.scripts]
 movensys-train = "movensys_imitation.cli.train:main"
