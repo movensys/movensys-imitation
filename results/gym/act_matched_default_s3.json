@@ -1,0 +1,22 @@
+{
+  "policy": "act_matched",
+  "policy_yaml": "act",
+  "variant": "default",
+  "seed": 3,
+  "train_overrides": [
+    "--policy.chunk_size=16",
+    "--policy.n_action_steps=8",
+    "--policy.temporal_ensemble_coeff=null"
+  ],
+  "eval_overrides": [],
+  "n_eval": 50,
+  "eval_seed": 100000,
+  "train_s": 6869.561428758025,
+  "peak_vram_gb": 1.19,
+  "steps": 100000,
+  "latency_ms_mean": 2.4718586893868633,
+  "latency_ms_p95": 2.5254626947571523,
+  "latency_n": 100,
+  "n_params": 51545986,
+  "device": "NVIDIA GeForce RTX 5090"
+}

@@ -1,0 +1,21 @@
+{
+  "policy": "diffusion",
+  "policy_yaml": "diffusion",
+  "variant": "ddim10",
+  "seed": 2,
+  "train_overrides": [],
+  "eval_overrides": [
+    "--policy.noise_scheduler_type=DDIM",
+    "--policy.num_inference_steps=10"
+  ],
+  "n_eval": 50,
+  "eval_seed": 100000,
+  "train_s": 8097.440322110997,
+  "peak_vram_gb": 5.01,
+  "steps": 100000,
+  "latency_ms_mean": 40.411915440199664,
+  "latency_ms_p95": 40.45834330463549,
+  "latency_n": 100,
+  "n_params": 262709026,
+  "device": "NVIDIA GeForce RTX 5090"
+}

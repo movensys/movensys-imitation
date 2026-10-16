@@ -1,0 +1,16 @@
+{
+  "policy": "diffusion",
+  "variant": "ref200k",
+  "seed": 100000,
+  "train_s": 16214.0,
+  "peak_vram_gb": 4.98,
+  "steps": 200000,
+  "n_eval": 50,
+  "eval_seed": 100000,
+  "imported_from": "outputs/ref_diffusion_pusht/eval_final/eval_info.json",
+  "latency_ms_mean": 375.1841541394242,
+  "latency_ms_p95": 389.97925614748965,
+  "latency_n": 100,
+  "n_params": 262709026,
+  "device": "NVIDIA GeForce RTX 5090"
+}

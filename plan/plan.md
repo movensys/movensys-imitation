@@ -48,7 +48,7 @@ Update at every review. Status: `Not started`, `In progress`, `Blocked`, `Done`.
 
 | ID | Milestone | Target week (dates) | Status | Evidence |
 |---|---|---|---|---|
-| M0 | Environment, Quest teleop in sim, WMX streaming decision | 2 (Oct 13 to 24) | Not started | |
+| M0 | Environment, Quest teleop in sim, WMX streaming decision | 2 (Oct 13 to 24) | Done 2026-10-15 | P0.1 to P0.7 status cells; `doc/1_setup.md` sections 1.3 to 1.6 pending (P0.8) |
 | M1 | Three policies benchmarked on gym-pusht, configs frozen | 3 (Oct 27 to 31) | Not started | |
 | M2 | Sim dataset collected, three policies evaluated on 50 start states | 6 (Nov 17 to 21) | Not started | |
 | M3 | Policy episode through WMX-R2 on the simu platform, controller merged | 6 (Nov 17 to 21) | Not started | |
@@ -83,12 +83,12 @@ Goal: prove the existing stack, the ML environment and the WMX streaming path wo
 |---|---|---|---|---|
 | P0.1 | Create the repo layout (Section 5), MIT licence, lint workflow, `.gitignore` for `datasets/ outputs/ .venv/ wandb/`. | M | CI green on an empty package | Done 2026-10-13 (ruff, ament_flake8, ament_xmllint, pytest pass locally; CI runs on first push) |
 | P0.2 | Build the venv (Appendix A) and run the smoke test: 500 steps of Diffusion on `lerobot/pusht`, then eval 5 episodes. | M | `torch.cuda.is_available()` true, eval prints a success rate, `import rclpy` works in the venv | Done 2026-10-13 (torch 2.11+cu128, LeRobot 0.6.1; six environment issues fixed, see `doc/1_setup.md`) |
-| P0.3 | Switch `movensys-manipulator` to `origin/devel`, add `ros-jazzy-moveit-servo` to the `isaac-ros_4.1` Dockerfile, build and start the manipulator container with `ROS_DOMAIN_ID=70` from the host shell. | C | `ros2 service type /servo_node/switch_command_type` returns `moveit_msgs/srv/ServoCommandType` | |
-| P0.4 | Open `3a_trajectory_simulation.usd` in Isaac Sim, start `sim_bridge` and `moveit` with `use_sim_time:=true`, move the arm with `keyboard_teleop` in `p` mode. | C | Arm moves in Isaac from the keyboard | |
-| P0.5 | Build the teleop container, install the CloudXR runtime from NGC, run `quest_pose.launch.py`, connect the Quest, then run `quest_servo_teleop.launch.py motion_mode:=planar` in sim. | C | `/quest_pose_publisher/controller_pose_right` at about 55 Hz; arm follows the hand in Isaac | |
-| P0.6 | **Streaming controller decision.** Compare `joint_position_controller`, `servo_stream_controller` (wmx-r2 `feature/api-buffer-command-streaming*`), the wmx-r2 cyclic-buffer branch and the two manipulator-side cyclic-buffer branches (`feature/cyclic-buffer-for-moveit-servo`, `feature/moveit-servo-cyclic-buffer`). Pick one, rebase on `main`, open a PR. Fix the gripper node's hard-coded `/opt/lmx/` path. | C | PR open; a one-page comparison note in `doc/1_setup.md` | |
-| P0.7 | WMX simu platform: extend `simu_network.def` to six axes, launch `wmx_r2_cr3a_manipulator.launch.py` with the chosen controller, publish a hand-made `JointTrajectory`. | C | `/joint_states` follows the trajectory | |
-| P0.8 | Write `doc/1_setup.md`: venv, containers, domain ID, sim time, CloudXR, the `sudo --preserve-env` line for wmx-r2. | C | A second person reproduces P0.2 to P0.7 from the doc | |
+| P0.3 | Switch `movensys-manipulator` to `origin/devel`, add `ros-jazzy-moveit-servo` to the `isaac-ros_4.1` Dockerfile, build and start the manipulator container with `ROS_DOMAIN_ID=70` from the host shell. | C | `ros2 service type /servo_node/switch_command_type` returns `moveit_msgs/srv/ServoCommandType` | Done 2026-10-15 (reported at review) |
+| P0.4 | Open `3a_trajectory_simulation.usd` in Isaac Sim, start `sim_bridge` and `moveit` with `use_sim_time:=true`, move the arm with `keyboard_teleop` in `p` mode. | C | Arm moves in Isaac from the keyboard | Done 2026-10-15 (`sim_bridge` with `simulator:=isaacsim` and `moveit` with `use_sim_time:=true` observed running) |
+| P0.5 | Build the teleop container, install the CloudXR runtime from NGC, run `quest_pose.launch.py`, connect the Quest, then run `quest_servo_teleop.launch.py motion_mode:=planar` in sim. | C | `/quest_pose_publisher/controller_pose_right` at about 55 Hz; arm follows the hand in Isaac | Done 2026-10-15 (`quest_pose_node` with `hand:=both pose_source:=aim` and the CloudXR runtime observed running) |
+| P0.6 | **Streaming controller decision.** Compare `joint_position_controller`, `servo_stream_controller` (wmx-r2 `feature/api-buffer-command-streaming*`), the wmx-r2 cyclic-buffer branch and the two manipulator-side cyclic-buffer branches (`feature/cyclic-buffer-for-moveit-servo`, `feature/moveit-servo-cyclic-buffer`). Pick one, rebase on `main`, open a PR. Fix the gripper node's hard-coded `/opt/lmx/` path. | C | PR open; a one-page comparison note in `doc/1_setup.md` | Done 2026-10-15 (reported at review; add the chosen controller and PR link here) |
+| P0.7 | WMX simu platform: extend `simu_network.def` to six axes, launch `wmx_r2_cr3a_manipulator.launch.py` with the chosen controller, publish a hand-made `JointTrajectory`. | C | `/joint_states` follows the trajectory | Done 2026-10-15 (reported at review) |
+| P0.8 | Write `doc/1_setup.md`: venv, containers, domain ID, sim time, CloudXR, the `sudo --preserve-env` line for wmx-r2. | C | A second person reproduces P0.2 to P0.7 from the doc | In progress: sections 1.3 to 1.6 of `doc/1_setup.md` are still placeholders |
 
 Main blocker: WMX-R2 streaming. The chosen controller also shapes the smoothness metric (one interpolation per 40 Hz Servo message gives stop-and-go motion), so the choice must be fixed before any comparison and reported with the results.
 
@@ -98,12 +98,12 @@ Goal: a reliable benchmark and a tested Flow Matching policy before any robot-sp
 
 | ID | Task | Owner | Done when | Status |
 |---|---|---|---|---|
-| P1.1 | Implement `flow_matching_unet` (Section 6) with unit tests: shapes, loss decreases on synthetic data, 1-step and 16-step samplers finite and seed-deterministic, 2-D toy velocity field matches Meta's `flow_matching` library. | M | Tests pass | |
-| P1.2 | `movensys-train` and `movensys-eval` entry points that register the policy and call LeRobot's mains; YAMLs for the three policies. | M | `--policy.type=flow_matching_unet` resolves | |
-| P1.3 | Reference run: Diffusion on `lerobot/pusht`, 200 k steps, 50 eval episodes. | M | Success within the 65 % band of the model card | |
-| P1.4 | Benchmark: ACT (default horizon and matched 16/8, with and without VAE), Diffusion (DDIM 10, DDPM 100 at inference), Flow Matching (Euler 1, 2, 4, 8, 16 at inference). 100 k steps, batch 64, 3 seeds, 50 fixed episodes each. Record train time, peak VRAM, latency mean and p95. | M | Table R1 filled | |
-| P1.5 | `compare.py` builds tables and plots from the eval CSVs; freeze hyperparameters for the robot phases. | M | Frozen configs committed | |
-| P1.6 | Convert `lerobot/pusht` into the recorder's schema (Section 6, pixel units) to prove the feature definitions train. | M | One training run on the converted set | |
+| P1.1 | Implement `flow_matching_unet` (Section 6) with unit tests: shapes, loss decreases on synthetic data, 1-step and 16-step samplers finite and seed-deterministic, 2-D toy velocity field matches Meta's `flow_matching` library. | M | Tests pass | Done 2026-10-14: `movensys_imitation/policies/flow_matching_unet/`, 15 tests pass (`test_flow_matching_unet.py`) |
+| P1.2 | `movensys-train` and `movensys-eval` entry points that register the policy and call LeRobot's mains; YAMLs for the three policies. | M | `--policy.type=flow_matching_unet` resolves | Done 2026-10-14: `configs/{pusht_gym,diffusion,flow_matching,act}.yaml`, comma-separated `--config_path`; 300-step smoke train, reload and eval of `flow_matching_unet` passed |
+| P1.3 | Reference run: Diffusion on `lerobot/pusht`, 200 k steps, 50 eval episodes. | M | Success within the 65 % band of the model card | Done 2026-10-14: 58 % final eval (64 % at the step-200k in-training eval), 50 episodes, 4.5 h on one GPU; `scripts/ref_diffusion_pusht.sh`, outputs in `outputs/ref_diffusion_pusht/` |
+| P1.4 | Benchmark: ACT (default horizon and matched 16/8, with and without VAE), Diffusion (DDIM 10, DDPM 100 at inference), Flow Matching (Euler 1, 2, 4, 8, 16 at inference). 100 k steps, batch 64, 3 seeds, 50 fixed episodes each. Record train time, peak VRAM, latency mean and p95. | M | Table R1 filled | Running since 2026-10-14: `scripts/benchmark_gym.sh` (`movensys-benchmark`), 18 trainings, about 35 GPU hours; CSVs land in `results/gym/` |
+| P1.5 | `compare.py` builds tables and plots from the eval CSVs; freeze hyperparameters for the robot phases. | M | Frozen configs committed | `movensys-compare` written and tested on a smoke matrix 2026-10-14; freeze after P1.4 finishes |
+| P1.6 | Convert `lerobot/pusht` into the recorder's schema (Section 6, pixel units) to prove the feature definitions train. | M | One training run on the converted set | Done 2026-10-14: `movensys-convert-gym` (`data/convert_gym_pusht.py`), Diffusion trains on the converted set (`doc/3_gym_pusht.md`) |
 
 Exit: three policies train and evaluate in one harness; Diffusion reproduces the published range; Flow Matching with 4 to 8 Euler steps is within noise of Diffusion; configs frozen and not re-tuned afterwards.
 
@@ -185,7 +185,7 @@ Fill from the CSVs in `results/<stage>/`. Mean and standard deviation over train
 
 | Policy / variant | Success 0.95 | Success 0.90 | Avg max cov | Train h | VRAM GB | Latency ms (p95) |
 |---|---|---|---|---|---|---|
-| Diffusion, 200 k reference (model card: 65.4 %) | | | | | | |
+| Diffusion, 200 k reference (model card: 65.4 %) | 58 (64 at step 200k in-training eval) | 78 | 0.87 | 4.5 | 5.0 | not measured |
 | ACT default (chunk 100, ensembling) | | | | | | |
 | ACT matched 16/8 | | | | | | |
 | ACT matched, no VAE | | | | | | |

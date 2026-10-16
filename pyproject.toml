@@ -24,12 +24,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.6"]
+dev = ["pytest>=8", "ruff>=0.6", "flow-matching>=1.0"]   # flow-matching: reference for the P1.1 tests
 viz = ["rerun-sdk"]
 
 [project.scripts]
 movensys-train = "movensys_imitation.cli.train:main"
 movensys-eval = "movensys_imitation.cli.eval:main"
+movensys-benchmark = "movensys_imitation.benchmark:main"
+movensys-compare = "movensys_imitation.compare:main"
+movensys-convert-gym = "movensys_imitation.data.convert_gym_pusht:main"
 
 [tool.setuptools.packages.find]
 include = ["movensys_imitation*"]
