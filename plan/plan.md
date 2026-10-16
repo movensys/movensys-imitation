@@ -4,11 +4,13 @@ Compare ACT, Diffusion Policy and Flow Matching on PushT with the Dobot CR3A. De
 
 | | |
 |---|---|
-| Version | 2.0, 2026-10-13. Merges `movensys_imitation_plan.md` (v1.1) and `Simplified_plan.md`; both are archived under `plan/archive/`. |
+| Version | 2.1, 2026-10-16. v2.0 (2026-10-13) merged `movensys_imitation_plan.md` (v1.1) and `Simplified_plan.md`; both are archived under `plan/archive/`. |
 | Host | Ubuntu 24.04, ROS 2 Jazzy, Python 3.12, RTX 5090, Isaac Sim 5.1 (`~/isaac-sim`), WMX3 SDK (`/opt/wmx3`) |
 | Start | 2026-10-13, 10 weeks, one engineer (7 to 8 weeks with a controls engineer **C** and an ML engineer **M** in parallel) |
 
-**Changes from v1 (review and accept or revert each):** T block scaled to 40 mm per unit so a 40 mm tag fits on it (v1 geometry had no room for the tag); overhead camera at 1280 x 720 so tags are large enough to detect from 0.7 m; real-robot checkpoint chosen by validation loss, not by sim score; 30 real trials per policy instead of 20; the guard arbitrates between teleop and policy input by mode; Phase 0 given two weeks and Phase 2 shortened by one; optional extras cut to a single list.
+**Changes in v2.1 (2026-10-16):** no markers anywhere. Real episodes are scored the way Chi et al. 2023 scored their real Push-T: the camera is fixed, the T is segmented in the overhead image, and coverage is computed in pixel space against a goal mask captured once from a frame with the T placed on the printed outline. No AprilTags, no homography, no camera-to-sheet calibration; the one-time camera setup stores the crop rectangle, the goal mask and a reference frame. The same procedure gives the sim goal mask (teleport the T to the goal pose, grab a frame), so sim validates the exact scorer used on the real robot. The policy sees a plain grey T on a plain sheet, the same in sim and real. The block size (40 mm per unit) and the 1280 x 720 camera stay for mask quality. Coverage and the 0.95 threshold stay as the metric so R2 and R4 remain comparable with R1 (the paper reports end-state IoU against the demonstration minimum; `scoring.py` records end-state IoU as well). The real block pose in metres is not recorded; nothing in the real metrics needs it.
+
+**Changes from v1 (review and accept or revert each):** T block scaled to 40 mm per unit (v1 geometry was too small to segment and push reliably); overhead camera at 1280 x 720 so the T mask is clean from 0.7 m; real-robot checkpoint chosen by validation loss, not by sim score; 30 real trials per policy instead of 20; the guard arbitrates between teleop and policy input by mode; Phase 0 given two weeks and Phase 2 shortened by one; optional extras cut to a single list.
 
 ---
 
@@ -113,9 +115,9 @@ Goal: the whole collection and inference pipeline on the simulated CR3A with gro
 
 | ID | Task | Owner | Done when | Status |
 |---|---|---|---|---|
-| P2.1 | Scene `9a_pusht_simulation.usd` from `3a`: T block, target sheet, pusher tip under `Link6`, overhead camera from `7b` at 1280 x 720 and 30 Hz on `/image_top/rgb`, T pose publisher `/pusht/t_block/pose`, T teleport subscriber `/pusht/t_block/pose_cmd`. Reach check over the whole push area at push height with the tool down; fix the area centre. | C | Teleop reaches all four corners without Servo singularity slow-down | |
+| P2.1 | Scene `9a_pusht_simulation.usd` from `3a`: T block, target sheet, pusher tip under `Link6`, overhead camera from `7b` at 1280 x 720 and 30 Hz on `/image_top/rgb`, T pose publisher `/pusht/t_block/pose`, T teleport subscriber `/pusht/t_block/pose_cmd`. Reach check over the whole push area at push height with the tool down; fix the area centre. | C | Teleop reaches all four corners without Servo singularity slow-down | In progress: scene generated 2026-10-16 by `sim/isaacsim/build_scene.py` (sheet, T, tip, camera, pose and teleport graphs); `sim/isaacsim/smoke_check.py` passes 13/13 headless (topics at rate, 1280 x 720 at 30 Hz, teleport exact, T at rest). Push-area centre provisional at world_manipulator (-0.03, -0.08); reach check with teleop still to do |
 | P2.2 | `planar_guard` with tests (z and orientation lock, workspace clamp, step limit, EEF-distance limit, watchdog, Servo POSE switch, source arbitration by mode) and `task.yaml`, `guard.yaml`. | C | Tests pass; teleop runs through the guard | |
-| P2.3 | `pusht_scorer` (sim mode) and `tasks/pusht/scoring.py` (shapely coverage), tests against hand-computed cases. | M | Tests pass | |
+| P2.3 | `tasks/pusht/scoring.py` with two backends: geometric (shapely coverage from a block pose; sim ground truth) and pixel (T mask from the overhead crop by colour threshold plus morphological opening, coverage and IoU against a stored goal mask). `setup_camera.py`: with the T on the goal (sim: teleported to `goal_pose()`; real: placed on the printed outline by hand) grab one frame, store the crop rectangle, the goal mask, the T's pixel area and the frame itself as the reference. `pusht_scorer` runs both backends in sim and logs their difference; tests against hand-computed cases. | M | Tests pass; pixel and geometric coverage agree within 0.02 on 20 sim episodes, including end states near the threshold | |
 | P2.4 | `episode_recorder`, `episode_manager`, `collect.launch.py mode:=sim`. Pilot 10 episodes; check with `lerobot-dataset-viz`; replay check (recorded actions through the guard reproduce the final T pose); reset repeatability check (10 teleports, T velocity zero after each). | M + C | Pilot dataset passes all three checks | |
 | P2.5 | Operator tuning: `position_scale`, guard step, crop, tip height. Write the operator guide in `doc/4_sim.md`. | C | Operator reaches 0.95 coverage in under 25 s on most tries | |
 | P2.6 | Collect 150 to 200 episodes on seeds 1000+; keep successes; log the discard rate. | C | Dataset `movensys/pusht_cr3a_sim_v1` with stats | |
@@ -142,9 +144,9 @@ Goal: real demonstrations, real training, real evaluation.
 
 | ID | Task | Owner | Done when | Status |
 |---|---|---|---|---|
-| P4.1 | Hardware: print the T and tip, laminate the sheet, mount the overhead camera. Confirm EtherCAT enabled in `/opt/wmx3/Module.ini`, licence valid, E-stop tested. | C | Checklist signed in `doc/6_real.md` | |
+| P4.1 | Hardware: print the T (matte grey, no marker) and tip, laminate the sheet, mount the overhead camera. Confirm EtherCAT enabled in `/opt/wmx3/Module.ini`, licence valid, E-stop tested. | C | Checklist signed in `doc/6_real.md` | |
 | P4.2 | Enable per-axis soft limits in `cr3a_wmx_parameters.xml` from the Phase 2 joint envelope plus margin (currently disabled on all axes). Verify Servo joint limits and that the gripper closes on the tip. | C | A commanded out-of-limit move is refused | |
-| P4.3 | `cameras_real.launch.py`: overhead RealSense at 1280 x 720, 30 fps, on `/image_top/*`; second `apriltag_detector` on it; scorer in real mode. Workspace alignment: jog the tip to three sheet marks, store the sheet-to-base transform. | C | Scorer reports coverage from the tags; tags detected across the whole area | |
+| P4.3 | `cameras_real.launch.py`: overhead RealSense at 1280 x 720, 30 fps, on `/image_top/*`, camera clamped so it cannot be nudged. Camera setup once per mount with `setup_camera.py` (P2.3): T on the printed outline, one frame, crop and goal mask and reference frame into `real_calibration.yaml`; scorer in pixel mode with the colour thresholds in `scorer.yaml`. Every session starts with `check_camera.py`: current frame against the reference frame (sheet corners and outline within 3 px), refuse to record or run otherwise. Workspace alignment: jog the tip to three sheet marks, store the sheet-to-base transform. | C | With the T placed by hand on the goal outline the scorer reads coverage >= 0.97; the T mask is clean over the whole area under both lighting conditions, with the arm retracted; the session check passes and fails when the camera is nudged on purpose | |
 | P4.4 | Low-speed path check: Servo `scale.linear` 0.1, guard step 2 mm, Quest teleop with `use_sim_time:=false` everywhere. Verify z lock, clamp, watchdog, dead-man and E-stop. Confirm `/wmx/moveit2/eef_pose` matches the sim frames. | C | Recorder and runner run unchanged against the real robot | |
 | P4.5 | Collect 100 to 150 real episodes on the numbered start marks, two lighting conditions, one operator. | C | Dataset `movensys/pusht_cr3a_real_v1` | |
 | P4.6 | Train the three policies on real data, 3 seeds. Pick one checkpoint per policy by validation loss before any real evaluation. | M | 9 checkpoints; selection written down before P4.7 | |
@@ -230,8 +232,8 @@ Dataset: episodes collected ___, kept ___, lighting conditions ___, operator ___
 | Robot | Dobot CR3A, `joint1..joint6`, EEF `Link6`, planning frame `world_manipulator` |
 | Pusher | Printed 20 mm cylinder tip held by the closed gripper; tool axis vertical, fixed yaw, tip bottom 10 mm above the table; only x, y move |
 | Push area | 0.45 x 0.45 m square in front of the robot, centre fixed after the P2.1 reach check |
-| T block | gym-pusht proportions at **40 mm per unit**: bar 160 x 40 mm, stem 40 x 120 mm, height 30 mm, 200 to 300 g; AprilTag 36h11 id 10 (36 mm) at the bar-stem junction, same in sim and real |
-| Target | T outline printed on a laminated sheet with AprilTag id 20 (50 mm) at a known offset and 30 numbered start marks with orientation |
+| T block | gym-pusht proportions at **40 mm per unit**: bar 160 x 40 mm, stem 40 x 120 mm, height 30 mm, 200 to 300 g; matte grey (gym-pusht's T colour), **no marker**, same look in sim and real |
+| Target | T outline printed on a white laminated sheet with 30 numbered start marks with orientation; no markers. Outline and marks are thin and coloured so the T mask threshold ignores them |
 | Start states | T position uniform in the inner 0.30 x 0.30 m, yaw uniform; EEF home at one corner. Seeds 0 to 49 evaluate, 1000+ collect; 30 marks on the real sheet |
 | Rates | policy 10 Hz, guard and teleop 50 Hz, Servo 40 Hz, WMX3 1 kHz |
 | Episode | 300 policy steps (30 s) |
@@ -240,12 +242,13 @@ Dataset: episodes collected ___, kept ___, lighting conditions ___, operator ___
 
 | Key | Shape | Content | Sim source | Real source |
 |---|---|---|---|---|
-| `observation.images.top` | video 256 x 256 x 3 | overhead RGB cropped to the push area, crop anchored on the sheet tag | `/image_top/rgb` | `/image_top/rgb` |
+| `observation.images.top` | video 256 x 256 x 3 | overhead RGB cropped to the push area; a fixed pixel rectangle chosen once at camera setup (sim: from the known camera pose; real: `real_calibration.yaml`) | `/image_top/rgb` | `/image_top/rgb` |
 | `observation.state` | float32 (2,) | pusher x, y in `world_manipulator` (m) | `/wmx/moveit2/eef_pose` | same |
 | `action` | float32 (2,) | guarded target x, y at this 10 Hz tick | `/pusht/target_guarded` | same |
 | `observation.joints` | float32 (6,) | joint positions (analysis only) | `/joint_states` | same |
-| `block_pose` | float32 (3,) | T x, y, yaw in the sheet frame (not a policy input) | `/pusht/t_block/pose` | tag 10 relative to tag 20 |
-| `coverage` | float32 (1,) | scorer output | scorer | scorer |
+| `block_pose` | float32 (3,) | T x, y, yaw in the sheet frame (not a policy input) | `/pusht/t_block/pose` | not available (NaN); real metrics use coverage, IoU, EEF path and timing only |
+| `coverage` | float32 (1,) | scorer output; on real, from the pixel scorer | scorer (geometric) | scorer (pixel) |
+| `iou` | float32 (1,) | T-to-goal IoU from the same masks or polygons (the paper's metric, reported alongside coverage) | scorer | scorer |
 
 Episode metadata: start-state id, operator, sim or real, Servo scale, guard parameters, software versions, success, time to success. Images are decoded from `sensor_msgs/Image` with numpy, never `cv_bridge` (apt `cv_bridge` is built against numpy 1.26; LeRobot needs numpy 2).
 
@@ -275,7 +278,7 @@ quest_servo_teleop (50 Hz)    ─┘   (host venv)                              
 
 **Episode loop** (`episode_manager`): reset (sim: teleport the T, home the EEF through the guard; real: show the start mark, wait for the operator), record at exactly 10 Hz, stop on coverage >= 0.95, 300 steps or a key, score, save or discard. Keyboard plus a `Trigger` service for scripted sweeps.
 
-**Real-robot sensing.** Overhead RealSense at 1280 x 720, 30 fps (a 36 mm tag at 0.7 m is about 48 px, enough for tag36h11; at 640 x 480 it would be about 24 px and unreliable). The scorer reads the two tag TFs and computes the T pose in the sheet frame, so no camera-to-robot calibration is needed for scoring. The wrist will occlude the T tag during pushes, so the scorer keeps the last valid pose and always scores once more after the arm retracts at episode end. The sheet-to-base transform from the three-mark alignment maps start marks to base-frame poses and is not used by the policy.
+**Real-robot sensing.** Overhead RealSense at 1280 x 720, 30 fps, fixed. Scoring follows Chi et al. 2023 and happens entirely in pixel space: the scorer segments the grey T from the white sheet in the overhead crop (colour threshold, morphological opening, one connected component whose area is within 15 % of the T's reference pixel area) and computes coverage, and IoU, against the goal mask captured at camera setup with the T placed on the printed outline. There is no camera calibration, no marker and nothing is detected during an episode. The wrist and the tip occlude part of the T during pushes; occlusion only removes T pixels, so live coverage is a lower bound and stopping on coverage >= 0.95 is never a false stop. The authoritative score is taken once more after the arm retracts at episode end, which is also when the paper measured its IoU. Sim runs the same pixel scorer, with a goal mask captured the same way, next to the physics ground truth and logs the difference (P2.3), so the real scorer's error is known before any real trial. Because the crop, the goal mask and the trained policies all assume one camera pose, the camera is mechanically fixed and every session begins with a frame check against the stored reference (P4.3). The sheet-to-base transform from the three-mark alignment maps start marks to base-frame poses and is not used by the policy.
 
 ### Repository layout
 
@@ -284,7 +287,7 @@ movensys-imitation/
 ├── movensys_imitation/          policies/flow_matching_unet/  tasks/pusht/  data/  configs/  cli/  compare.py  tests/
 ├── movensys_imitation_ros/      planar_guard  episode_recorder  episode_manager  pusht_scorer  policy_runner  eval_sim  eval_real
 │   ├── launch/                  collect.launch.py  run_policy.launch.py  cameras_real.launch.py   (mode:=sim|hil|real)
-│   └── config/dobot_cr3a/       task.yaml  guard.yaml  recorder.yaml  real_calibration.yaml  apriltag_top.yaml
+│   └── config/dobot_cr3a/       task.yaml  guard.yaml  recorder.yaml  real_calibration.yaml  scorer.yaml
 ├── sim/isaacsim/                9a_pusht_simulation.usd  9b_pusht_hil.usd  assets/
 ├── hardware/                    t_block.stl  pusher_tip.stl  target_sheet.pdf  camera_mount.md
 ├── results/                     committed CSVs per stage (tables regenerate from these)
@@ -321,8 +324,9 @@ Fairness: same dataset and split, same resolution and augmentation where the met
 | Streaming controller not merged or jerky on six axes | M / H | Decide in P0.6; HIL (Phase 3) before hardware; report the controller with the smoothness numbers |
 | Quest / CloudXR bring-up slow | M / M | Start week 1; fallbacks: `keyboard_teleop` for pilots, a mouse-on-image teleop node if the Quest is unavailable |
 | Demonstrations through Servo too slow or jerky | M / H | Pilot and tuning (P2.5), replay check, keep successes only |
-| Tags too small or occluded on the real setup | M / M | 1280 x 720, 36 mm tag on a 40 mm per unit T, end-of-episode scoring; fallback: colour segmentation of the T |
-| Sim-to-real image gap | H / M | Real policies train on real data; sim validates the pipeline; same tag-anchored crop; two lighting conditions |
+| T mask corrupted on the real setup (shadows, glare, the wrist or tip in the crop, marks on the sheet) | M / M | White matte sheet, matte grey T, thin coloured sheet artwork, mask area check, end-of-episode scoring with the arm retracted, scorer validated against ground truth in sim (P2.3), both lighting conditions in the dataset; fallback: a marker on the T with tag-based scoring (the v2.0 design) |
+| Camera moved between sessions (crop, goal mask and trained policies all assume one view) | M / H | Clamped mount; `check_camera.py` at every session start against the reference frame; if it fails, re-run `setup_camera.py` and treat earlier episodes as a separate camera pose |
+| Sim-to-real image gap | H / M | Real policies train on real data; sim validates the pipeline; same fixed crop of the same plain T on a plain sheet; two lighting conditions |
 | Schedule has no slack | H / M | Phase 0 is two weeks; cut real-data seeds to 2 before cutting phases |
 | Real-robot damage from a bad action | L / H | Phase 4 checklist and the five safety layers |
 | numpy 2 breaks system Python packages in the venv | H / L | Only `rclpy`, `tf2_ros` and message packages from the system; numpy image decoding |
@@ -385,7 +389,6 @@ LeRobot 0.6.1 needs Python >= 3.12, torch 2.7 to 2.11, numpy 2.0 to 2.2. Isaac S
 | `/wmx/set_gripper` | `std_srvs/SetBool` | `sim_bridge` (sim), `gripper_controller` (real) | true = close on the tip |
 | `/image_top/rgb`, `/image_top/camera_info` | `Image`, `CameraInfo` | Isaac camera or RealSense | 1280 x 720, 30 Hz |
 | `/pusht/t_block/pose`, `/pusht/t_block/pose_cmd` | `geometry_msgs/Pose` | Isaac graphs | ground truth 30 Hz; teleport on reset |
-| TF `camera_top_color_optical_frame -> tag36h11:10`, `:20` | TF | `apriltag_detector` (real) | T and sheet tags |
 | `/wmx/engine/ready`, `/wmx/core_motion/ready` | `Bool` (transient local) | wmx-r2 | wait for both before streaming |
 
 Frames: `world_manipulator` is the planning frame (`Link0` at (-0.03, 0.275, 0.05), yaw -90 deg); `Link6` is Servo's `ee_frame`; table top at z about 0.043 in sim.
