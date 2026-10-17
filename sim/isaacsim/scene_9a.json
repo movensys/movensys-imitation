@@ -76,10 +76,40 @@
     "rate_hz": 30,
     "image_axes": "image +x = sheet +x, image up = sheet +y (robot at the top of the image)"
   },
+  "camera_hand": {
+    "link_prim": "/World/movensys_manipulator/Link6/bracket/camera_hand_link",
+    "camera_prim": "/World/movensys_manipulator/Link6/bracket/camera_hand_link/camera_hand",
+    "model_prim": "/World/movensys_manipulator/Link6/bracket/camera_hand_link/RSD455/Camera_OmniVision_OV9782_Color",
+    "mount_in_link6_bracket": {
+      "xyz": [
+        0.0,
+        -0.08,
+        0.038
+      ],
+      "quat_wxyz": [
+        0.5,
+        0.5,
+        -0.5,
+        0.5
+      ],
+      "source": "7a_robopoly_simulation.usd"
+    },
+    "topics": [
+      "/image_hand/rgb",
+      "/image_hand/camera_info"
+    ],
+    "frame_id": "camera_hand_color_optical_frame",
+    "resolution": [
+      1280,
+      720
+    ],
+    "rate_hz": 30
+  },
   "graphs": [
     "/Graph/pusht_t_block_pose",
     "/Graph/pusht_t_block_pose_cmd",
     "/Graph/ROS_Camera_Top",
+    "/Graph/ROS_Camera_Hand",
     "/Graph/ROS_JointStates",
     "/Graph/ROS_Clock"
   ]

@@ -39,6 +39,8 @@ class Checker(Node):
             ("/clock", Clock),
             ("/image_top/rgb", Image),
             ("/image_top/camera_info", CameraInfo),
+            ("/image_hand/rgb", Image),
+            ("/image_hand/camera_info", CameraInfo),
             ("/pusht/t_block/pose", Pose),
         ):
             self.stamps[name] = []
@@ -62,6 +64,7 @@ class Checker(Node):
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--image", help="save the last /image_top/rgb frame here (.png via Pillow)")
+    ap.add_argument("--hand-image", help="save the last /image_hand/rgb frame here (.png)")
     ap.add_argument("--no-teleport", action="store_true")
     ap.add_argument("--window", type=float, default=5.0, help="seconds to measure rates over")
     args = ap.parse_args()
@@ -79,37 +82,39 @@ def main() -> int:
         ("/clock", 30, 400),
         ("/image_top/rgb", 20, 40),
         ("/image_top/camera_info", 20, 40),
+        ("/image_hand/rgb", 20, 40),
+        ("/image_hand/camera_info", 20, 40),
         ("/pusht/t_block/pose", 20, 40),
     ):
         r = node.rate(topic, args.window)
         check(f"{topic} rate", lo <= r <= hi, f"{r:.1f} Hz (expect {lo} to {hi})")
 
-    img = node.last.get("/image_top/rgb")
-    if img is not None:
-        check(
-            "image size",
-            (img.width, img.height) == (1280, 720),
-            f"{img.width} x {img.height} {img.encoding}",
-        )
-        check(
-            "image frame_id",
-            img.header.frame_id == "camera_top_color_optical_frame",
-            img.header.frame_id,
-        )
-        if args.image:
-            from PIL import Image as PILImage
+    for ns, frame, save_to in (
+        ("/image_top", "camera_top_color_optical_frame", args.image),
+        ("/image_hand", "camera_hand_color_optical_frame", args.hand_image),
+    ):
+        img = node.last.get(f"{ns}/rgb")
+        if img is not None:
+            check(
+                f"{ns} image size",
+                (img.width, img.height) == (1280, 720),
+                f"{img.width} x {img.height} {img.encoding}",
+            )
+            check(f"{ns} image frame_id", img.header.frame_id == frame, img.header.frame_id)
+            if save_to:
+                from PIL import Image as PILImage
 
-            rows = np.frombuffer(img.data, dtype=np.uint8).reshape(img.height, img.step)
-            arr = rows[:, : img.width * 3].reshape(img.height, img.width, 3)
-            PILImage.fromarray(arr.copy(), "RGB").save(args.image)
-            print(f"saved {args.image}")
-    info = node.last.get("/image_top/camera_info")
-    if info is not None:
-        check(
-            "camera_info",
-            (info.width, info.height) == (1280, 720),
-            f"fx={info.k[0]:.1f} fy={info.k[4]:.1f} cx={info.k[2]:.1f} cy={info.k[5]:.1f}",
-        )
+                rows = np.frombuffer(img.data, dtype=np.uint8).reshape(img.height, img.step)
+                arr = rows[:, : img.width * 3].reshape(img.height, img.width, 3)
+                PILImage.fromarray(arr.copy(), "RGB").save(save_to)
+                print(f"saved {save_to}")
+        info = node.last.get(f"{ns}/camera_info")
+        if info is not None:
+            check(
+                f"{ns} camera_info",
+                (info.width, info.height) == (1280, 720),
+                f"fx={info.k[0]:.1f} fy={info.k[4]:.1f} cx={info.k[2]:.1f} cy={info.k[5]:.1f}",
+            )
     js = node.last.get("/joint_states")
     if js is not None:
         check("joint names", all(f"joint{i}" in js.name for i in range(1, 7)), ", ".join(js.name))

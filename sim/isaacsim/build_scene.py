@@ -19,6 +19,10 @@ What is added to the 3a scene (robot, table, room, joint-state and clock graphs 
 * ``/World/camera_top_link``            RealSense D455 model looking straight down; the render
                                         camera is the plain ``camera_top`` child: 1280 x 720,
                                         30 Hz on ``/image_top/rgb`` and ``/image_top/camera_info``
+* ``.../Link6/bracket/camera_hand_link`` wrist D455 model at the ``7a`` scene's mount pose, its
+                                        rigid body removed; the render camera is the plain
+                                        ``camera_hand`` child: 1280 x 720, 30 Hz on
+                                        ``/image_hand/rgb`` and ``/image_hand/camera_info``
 * ``/Graph/pusht_t_block_pose``         ``geometry_msgs/Pose`` of the T in the sheet frame, 30 Hz
 * ``/Graph/pusht_t_block_pose_cmd``     teleports the T to a ``Pose`` and zeroes its velocity
 
@@ -93,6 +97,12 @@ ASSET_CAM_PRIM = (
     f"{CAM_LINK}/RSD455/Camera_OmniVision_OV9782_Color"  # pose and optics reference only
 )
 CAM_PRIM = f"{CAM_LINK}/camera_top"
+HAND_LINK = f"{LINK6}/bracket/camera_hand_link"
+HAND_ASSET_CAM_PRIM = f"{HAND_LINK}/RSD455/Camera_OmniVision_OV9782_Color"
+HAND_CAM_PRIM = f"{HAND_LINK}/camera_hand"
+# Wrist D455 mount pose in the Link6 bracket frame, copied from 7a_robopoly_simulation.usd.
+HAND_IN_BRACKET_T = (0.0, -0.08, 0.038)
+HAND_IN_BRACKET_Q = Gf.Quatf(0.5, 0.5, -0.5, 0.5)
 RSD455_URL = "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.0/Isaac/Sensors/Intel/RealSense/rsd455.usd"
 WM_IN_WORLD = Gf.Quatf(
     math.cos(math.pi / 4), 0, 0, math.sin(math.pi / 4)
@@ -360,71 +370,108 @@ set_xform(
 )
 app.update()
 
-# Render from a plain Camera prim with the D455 colour optics. The asset's own camera prims are
-# marked invisible, and a render product on one of them shows only the dome backdrop (visible,
-# it shows the inside of the lens housing), so the asset stays a visual prop only.
-plain = UsdGeom.Camera.Define(stage, CAM_PRIM)
-m_rel = (
-    UsdGeom.XformCache().GetLocalToWorldTransform(asset_cam)
-    * UsdGeom.XformCache().GetLocalToWorldTransform(cam_link.GetPrim()).GetInverse()
+
+def render_camera(link, asset_cam, path: str, label: str) -> UsdGeom.Camera:
+    """A plain Camera prim under ``link`` at the asset colour camera's pose, with its optics.
+
+    The asset's own camera prims are marked invisible, and a render product on one of them shows
+    only the dome backdrop (visible, it shows the inside of the lens housing), so the asset stays
+    a visual prop only.
+    """
+    plain = UsdGeom.Camera.Define(stage, path)
+    m_rel = (
+        UsdGeom.XformCache().GetLocalToWorldTransform(asset_cam)
+        * UsdGeom.XformCache().GetLocalToWorldTransform(link).GetInverse()
+    )
+    plain.AddTransformOp().Set(m_rel)
+    h_ap = asset_cam.GetAttribute("horizontalAperture").Get()
+    plain.CreateFocalLengthAttr(asset_cam.GetAttribute("focalLength").Get())
+    plain.CreateHorizontalApertureAttr(h_ap)
+    plain.CreateVerticalApertureAttr(h_ap * 720 / 1280)  # square pixels at 1280 x 720
+    plain.CreateClippingRangeAttr(Gf.Vec2f(0.01, 100.0))
+    app.update()
+    m_cam = UsdGeom.XformCache().GetLocalToWorldTransform(plain.GetPrim())
+    log(
+        f"{label} camera world pos {tuple(round(v, 3) for v in m_cam.ExtractTranslation())}, "
+        f"view dir {tuple(round(v, 3) for v in m_cam.TransformDir(Gf.Vec3d(0, 0, -1)))}, "
+        f"image up {tuple(round(v, 3) for v in m_cam.TransformDir(Gf.Vec3d(0, 1, 0)))}"
+    )
+    return plain
+
+
+render_camera(cam_link.GetPrim(), asset_cam, CAM_PRIM, "top")
+
+# Wrist camera: the 7a scene's D455 mount on the Link6 bracket, same local pose. The asset root
+# carries a dynamic rigid body, which PhysX rejects when nested inside the Link6 body (and which
+# falls under gravity when it is not), so the body and mass schemas are removed and the model
+# rides on the link as plain geometry.
+hand_link = UsdGeom.Xform.Define(stage, HAND_LINK)
+hand_link.GetPrim().GetReferences().AddReference(RSD455_URL)
+set_xform(hand_link.GetPrim(), HAND_IN_BRACKET_T, HAND_IN_BRACKET_Q)
+for _ in range(5):
+    app.update()
+hand_asset_cam = stage.GetPrimAtPath(HAND_ASSET_CAM_PRIM)
+assert hand_asset_cam and hand_asset_cam.GetTypeName() == "Camera", (
+    f"{HAND_ASSET_CAM_PRIM} missing (asset not loaded?)"
 )
-plain.AddTransformOp().Set(m_rel)
-h_ap = asset_cam.GetAttribute("horizontalAperture").Get()
-plain.CreateFocalLengthAttr(asset_cam.GetAttribute("focalLength").Get())
-plain.CreateHorizontalApertureAttr(h_ap)
-plain.CreateVerticalApertureAttr(h_ap * 720 / 1280)  # square pixels at 1280 x 720
-plain.CreateClippingRangeAttr(Gf.Vec2f(0.01, 100.0))
-app.update()
-m_cam = UsdGeom.XformCache().GetLocalToWorldTransform(plain.GetPrim())
-log(
-    f"camera world pos {tuple(round(v, 3) for v in m_cam.ExtractTranslation())}, "
-    f"view dir {tuple(round(v, 3) for v in m_cam.TransformDir(Gf.Vec3d(0, 0, -1)))}, "
-    f"image up {tuple(round(v, 3) for v in m_cam.TransformDir(Gf.Vec3d(0, 1, 0)))}"
-)
+hand_model = stage.GetPrimAtPath(f"{HAND_LINK}/RSD455")
+for schema in ("PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"):
+    hand_model.RemoveAppliedSchema(schema)
+assert not hand_model.HasAPI(UsdPhysics.RigidBodyAPI), "hand D455 still has a rigid body"
+render_camera(hand_link.GetPrim(), hand_asset_cam, HAND_CAM_PRIM, "hand")
 
 # --------------------------------------------------------------------------------------- graphs
 keys = og.Controller.Keys
 
-og.Controller.edit(
-    {"graph_path": "/Graph/ROS_Camera_Top", "evaluator_name": "execution"},
-    {
-        keys.CREATE_NODES: [
-            ("OnPlaybackTick", "omni.graph.action.OnPlaybackTick"),
-            ("RunOnce", "isaacsim.core.nodes.OgnIsaacRunOneSimulationFrame"),
-            ("Context", "isaacsim.ros2.bridge.ROS2Context"),
-            ("RenderProduct", "isaacsim.core.nodes.IsaacCreateRenderProduct"),
-            ("RGBPublish", "isaacsim.ros2.bridge.ROS2CameraHelper"),
-            ("CameraInfoPublish", "isaacsim.ros2.bridge.ROS2CameraInfoHelper"),
-        ],
-        keys.SET_VALUES: [
-            ("Context.inputs:useDomainIDEnvVar", True),
-            ("RenderProduct.inputs:cameraPrim", CAM_PRIM),
-            ("RenderProduct.inputs:width", 1280),
-            ("RenderProduct.inputs:height", 720),
-            ("RGBPublish.inputs:type", "rgb"),
-            ("RGBPublish.inputs:topicName", "/image_top/rgb"),
-            ("RGBPublish.inputs:frameId", "camera_top_color_optical_frame"),
-            ("RGBPublish.inputs:frameSkipCount", 1),
-            ("RGBPublish.inputs:resetSimulationTimeOnStop", True),
-            ("CameraInfoPublish.inputs:topicName", "/image_top/camera_info"),
-            ("CameraInfoPublish.inputs:frameId", "camera_top_color_optical_frame"),
-            ("CameraInfoPublish.inputs:frameSkipCount", 1),
-            ("CameraInfoPublish.inputs:resetSimulationTimeOnStop", True),
-        ],
-        keys.CONNECT: [
-            ("OnPlaybackTick.outputs:tick", "RunOnce.inputs:execIn"),
-            ("RunOnce.outputs:step", "RenderProduct.inputs:execIn"),
-            ("RenderProduct.outputs:execOut", "RGBPublish.inputs:execIn"),
-            ("RenderProduct.outputs:renderProductPath", "RGBPublish.inputs:renderProductPath"),
-            ("Context.outputs:context", "RGBPublish.inputs:context"),
-            ("RenderProduct.outputs:execOut", "CameraInfoPublish.inputs:execIn"),
-            (
-                "RenderProduct.outputs:renderProductPath",
-                "CameraInfoPublish.inputs:renderProductPath",
-            ),
-            ("Context.outputs:context", "CameraInfoPublish.inputs:context"),
-        ],
-    },
+
+def camera_graph(graph_path: str, cam_prim: str, namespace: str, frame_id: str) -> None:
+    """RGB + CameraInfo publisher for ``cam_prim`` at 1280 x 720, every other frame (30 Hz)."""
+    og.Controller.edit(
+        {"graph_path": graph_path, "evaluator_name": "execution"},
+        {
+            keys.CREATE_NODES: [
+                ("OnPlaybackTick", "omni.graph.action.OnPlaybackTick"),
+                ("RunOnce", "isaacsim.core.nodes.OgnIsaacRunOneSimulationFrame"),
+                ("Context", "isaacsim.ros2.bridge.ROS2Context"),
+                ("RenderProduct", "isaacsim.core.nodes.IsaacCreateRenderProduct"),
+                ("RGBPublish", "isaacsim.ros2.bridge.ROS2CameraHelper"),
+                ("CameraInfoPublish", "isaacsim.ros2.bridge.ROS2CameraInfoHelper"),
+            ],
+            keys.SET_VALUES: [
+                ("Context.inputs:useDomainIDEnvVar", True),
+                ("RenderProduct.inputs:cameraPrim", cam_prim),
+                ("RenderProduct.inputs:width", 1280),
+                ("RenderProduct.inputs:height", 720),
+                ("RGBPublish.inputs:type", "rgb"),
+                ("RGBPublish.inputs:topicName", f"{namespace}/rgb"),
+                ("RGBPublish.inputs:frameId", frame_id),
+                ("RGBPublish.inputs:frameSkipCount", 1),
+                ("RGBPublish.inputs:resetSimulationTimeOnStop", True),
+                ("CameraInfoPublish.inputs:topicName", f"{namespace}/camera_info"),
+                ("CameraInfoPublish.inputs:frameId", frame_id),
+                ("CameraInfoPublish.inputs:frameSkipCount", 1),
+                ("CameraInfoPublish.inputs:resetSimulationTimeOnStop", True),
+            ],
+            keys.CONNECT: [
+                ("OnPlaybackTick.outputs:tick", "RunOnce.inputs:execIn"),
+                ("RunOnce.outputs:step", "RenderProduct.inputs:execIn"),
+                ("RenderProduct.outputs:execOut", "RGBPublish.inputs:execIn"),
+                ("RenderProduct.outputs:renderProductPath", "RGBPublish.inputs:renderProductPath"),
+                ("Context.outputs:context", "RGBPublish.inputs:context"),
+                ("RenderProduct.outputs:execOut", "CameraInfoPublish.inputs:execIn"),
+                (
+                    "RenderProduct.outputs:renderProductPath",
+                    "CameraInfoPublish.inputs:renderProductPath",
+                ),
+                ("Context.outputs:context", "CameraInfoPublish.inputs:context"),
+            ],
+        },
+    )
+
+
+camera_graph("/Graph/ROS_Camera_Top", CAM_PRIM, "/image_top", "camera_top_color_optical_frame")
+camera_graph(
+    "/Graph/ROS_Camera_Hand", HAND_CAM_PRIM, "/image_hand", "camera_hand_color_optical_frame"
 )
 
 # T pose publisher: every second physics tick (60 Hz physics -> 30 Hz), pose in the sheet frame.
@@ -592,7 +639,28 @@ meta = {
         "rate_hz": 30,
         "image_axes": "image +x = sheet +x, image up = sheet +y (robot at the top of the image)",
     },
-    "graphs": [pub, sub, "/Graph/ROS_Camera_Top", "/Graph/ROS_JointStates", "/Graph/ROS_Clock"],
+    "camera_hand": {
+        "link_prim": HAND_LINK,
+        "camera_prim": HAND_CAM_PRIM,
+        "model_prim": HAND_ASSET_CAM_PRIM,
+        "mount_in_link6_bracket": {
+            "xyz": list(HAND_IN_BRACKET_T),
+            "quat_wxyz": [HAND_IN_BRACKET_Q.GetReal(), *HAND_IN_BRACKET_Q.GetImaginary()],
+            "source": "7a_robopoly_simulation.usd",
+        },
+        "topics": ["/image_hand/rgb", "/image_hand/camera_info"],
+        "frame_id": "camera_hand_color_optical_frame",
+        "resolution": [1280, 720],
+        "rate_hz": 30,
+    },
+    "graphs": [
+        pub,
+        sub,
+        "/Graph/ROS_Camera_Top",
+        "/Graph/ROS_Camera_Hand",
+        "/Graph/ROS_JointStates",
+        "/Graph/ROS_Clock",
+    ],
 }
 meta_path = args.out.with_name("scene_9a.json")
 meta_path.write_text(json.dumps(meta, indent=2) + "\n")
@@ -624,6 +692,9 @@ if args.play > 0:
                 "pose.pos.x": f"{pub}/BreakTranslate.outputs:x",
                 "camera.renderProduct": (
                     "/Graph/ROS_Camera_Top/RenderProduct.outputs:renderProductPath"
+                ),
+                "hand.renderProduct": (
+                    "/Graph/ROS_Camera_Hand/RenderProduct.outputs:renderProductPath"
                 ),
             }
             vals = {}

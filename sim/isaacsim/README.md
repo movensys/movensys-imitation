@@ -72,6 +72,11 @@ default `-0.03 -0.08`, to be fixed after the reach check), `--camera-height` (0.
   and image up is sheet +y, so the robot is at the top of the picture. Horizontal field of view
   about 90 degrees (1.4 x 0.8 m on the table), so the sheet is about 410 x 410 px and the T bar
   about 145 x 36 px.
+* **Hand camera**: the `7a_robopoly` scene's wrist D455 mount, reproduced at the same pose on
+  `Link6/bracket` (translate (0, -0.08, 0.038), quaternion wxyz (0.5, 0.5, -0.5, 0.5)), rendered
+  the same way from a plain `camera_hand` prim at 1280 x 720, 30 Hz. The asset's rigid body is
+  removed, since PhysX rejects a dynamic body nested in the Link6 body (the `7a` scene logs that
+  error on Play). The model is a visual prop only, like the top camera.
 
 ## ROS 2 interfaces (Appendix A of the plan)
 
@@ -79,6 +84,7 @@ default `-0.03 -0.08`, to be fixed after the reach check), `--camera-height` (0.
 |---|---|---|---|
 | `/joint_states`, `/joint_command`, `/clock` | unchanged from 3a | | |
 | `/image_top/rgb`, `/image_top/camera_info` | `sensor_msgs/Image` (rgb8), `CameraInfo` | out, 30 Hz | frame `camera_top_color_optical_frame` |
+| `/image_hand/rgb`, `/image_hand/camera_info` | `sensor_msgs/Image` (rgb8), `CameraInfo` | out, 30 Hz | frame `camera_hand_color_optical_frame`, wrist D455 pose from `7a` |
 | `/pusht/t_block/pose` | `geometry_msgs/Pose` | out, 30 Hz | block pose in the sheet frame |
 | `/pusht/t_block/pose_cmd` | `geometry_msgs/Pose` | in | teleports the block and zeroes its velocity; send z = 0.001 |
 
