@@ -117,11 +117,12 @@ Commanded position	Finger distance
 0.045	10 mm (fully closed)
 Three ways to close it:
 
-1. Over ROS 2, while the scene plays. The joint-state graph feeds /joint_command into the articulation controller, and it accepts a partial joint list, so you can command only the fingers:
 
 ```
 source /opt/ros/jazzy/setup.bash
-ros2 topic pub --once /joint_command sensor_msgs/msg/JointState \
-  "{name: [picker_1_joint, picker_2_joint], position: [0.040, 0.040]}"
+ros2 service call /wmx/set_gripper std_srvs/srv/SetBool "{data: true}"    # close
+ros2 service call /wmx/set_gripper std_srvs/srv/SetBool "{data: false}"   # open
+
+
 ```
 Use 0.040 rather than 0.045 to stop at a 20 mm gap, which is the tip diameter. Open again with 0.0. The positions are echoed back on /joint_states.
