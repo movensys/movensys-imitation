@@ -37,9 +37,9 @@
   "block_rest_z_in_sheet": 0.0,
   "markers": "none (plan v2.1); real scoring is in overhead pixel space",
   "block_rgb": [
-    120,
-    120,
-    120
+    20,
+    40,
+    110
   ],
   "teleport": {
     "topic": "/pusht/t_block/pose_cmd",

@@ -9,7 +9,7 @@ Python, which has ``pxr`` once its app is up:
 Writes into ``sim/isaacsim/assets/`` (ASCII-encoded ``.usd`` so diffs stay readable):
 
 * ``t_block.usd``      rigid T: gym-pusht proportions at 40 mm per unit, 30 mm tall, 0.25 kg,
-                       plain grey (120, 120, 120), friction 0.40/0.35. Default prim ``/t_block``.
+                       dark blue (20, 40, 110), friction 0.40/0.35. Default prim ``/t_block``.
 * ``pusher_tip.usd``   20 mm cylinder, collision only (it rides on the link it is parented to).
                        Default prim ``/pusher_tip``.
 
@@ -49,7 +49,7 @@ except ModuleNotFoundError:  # Isaac Sim's Python only exposes pxr after the app
 
 ASSETS = Path(__file__).resolve().parent / "assets"
 
-BLOCK_RGB = (120, 120, 120)  # gym-pusht's grey T
+BLOCK_RGB = (20, 40, 110)  # dark blue T
 TIP_RGB = (0.15, 0.15, 0.18)
 TIP_RADIUS = 0.010
 

@@ -13,7 +13,7 @@ What is added to the 3a scene (robot, table, room, joint-state and clock graphs 
 * ``/World/pusht``                      the sheet frame: aligned with ``world_manipulator``,
                                         origin at the push-area centre on the table top
 * ``/World/pusht/target_sheet``         textured quad with the goal outline and start marks
-* ``/World/pusht/t_block``              rigid T (two grey boxes, 0.25 kg, friction material)
+* ``/World/pusht/t_block``              rigid T (two dark blue boxes, 0.25 kg, friction material)
                                         No markers anywhere (plan v2.1): scoring is pixel-based.
 * ``.../Link6/pusher_tip``              20 mm cylinder along the tool axis, collision enabled
 * ``/World/camera_top_link``            RealSense D455 model looking straight down; the render
@@ -91,6 +91,7 @@ PUSHT = "/World/pusht"
 SHEET = f"{PUSHT}/target_sheet"
 BLOCK = f"{PUSHT}/t_block"
 LOOKS = f"{PUSHT}/Looks"
+BLOCK_RGB = (20, 40, 110)  # dark blue T, 0-255; the same value as make_assets.py / make_usd_assets.py
 TIP = f"{LINK6}/pusher_tip"
 CAM_LINK = "/World/camera_top_link"
 ASSET_CAM_PRIM = (
@@ -306,7 +307,7 @@ x0, y0, yaw0 = g.sample_start_pose(0)
 set_xform(bprim, (x0, y0, 0.001), Gf.Quatf(*g.yaw_to_quat_wxyz(yaw0)))
 UsdPhysics.RigidBodyAPI.Apply(bprim)
 UsdPhysics.MassAPI.Apply(bprim).CreateMassAttr(g.BLOCK_MASS)
-block_vis = color_material(stage, f"{LOOKS}/block_material", (0.47, 0.47, 0.47))  # 120/255
+block_vis = color_material(stage, f"{LOOKS}/block_material", tuple(c / 255 for c in BLOCK_RGB))
 block_phys = physics_material(stage, f"{LOOKS}/block_physics", 0.40, 0.35)
 h = g.BLOCK_HEIGHT
 for name, size, centre in (
@@ -617,7 +618,7 @@ meta = {
     "block_prim": BLOCK,
     "block_rest_z_in_sheet": 0.0,
     "markers": "none (plan v2.1); real scoring is in overhead pixel space",
-    "block_rgb": [120, 120, 120],
+    "block_rgb": list(BLOCK_RGB),
     "teleport": {"topic": "/pusht/t_block/pose_cmd", "frame": "sheet", "z_hint": 0.001},
     "pose_topic": {"topic": "/pusht/t_block/pose", "frame": "sheet", "rate_hz": 30},
     "pusher_tip": {

@@ -9,8 +9,8 @@ Writes into ``sim/isaacsim/assets/``:
 * ``target_sheet.png``   the 0.45 x 0.45 m sheet: goal T outline and 30 start marks, no markers
 * ``pusht_sheet.json``   every number the artwork was made from, for ``task.yaml`` and the scorer
 
-The sheet carries no fiducials (plan v2.1): scoring segments the grey T in the overhead image, so
-everything printed on the sheet is thin and coloured to stay clear of the T's grey threshold.
+The sheet carries no fiducials (plan v2.1): scoring segments the dark blue T in the overhead image,
+so everything printed on the sheet is thin and coloured to stay clear of the T's colour threshold.
 """
 
 from __future__ import annotations
@@ -28,9 +28,9 @@ from movensys_imitation.tasks.pusht import geometry as g  # noqa: E402
 
 ASSETS = Path(__file__).resolve().parent / "assets"
 PX_PER_M = 4000  # 4 px per mm
-BLOCK_RGB = (120, 120, 120)  # gym-pusht's grey T (the block material in the scene)
+BLOCK_RGB = (20, 40, 110)  # dark blue T (the block material in the scene)
 GOAL_RGB = (40, 160, 70)  # gym-pusht's green goal
-MARK_RGB = (60, 110, 220)  # start marks: blue, so a grey threshold never picks them up
+MARK_RGB = (60, 110, 220)  # start marks: light blue, thin lines; the T threshold must not pick them up
 
 
 def px(m: float) -> int:

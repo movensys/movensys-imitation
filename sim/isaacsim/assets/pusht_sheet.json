@@ -14,9 +14,9 @@
     "height_m": 0.03,
     "mass_kg": 0.25,
     "rgb": [
-      120,
-      120,
-      120
+      20,
+      40,
+      110
     ],
     "pose_origin": "bar-stem junction; yaw 0 = bar along +x on the +y side",
     "polygon_local_m": [

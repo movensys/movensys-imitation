@@ -21,8 +21,8 @@ into the script (or its flags) and the scene is regenerated.
 The task geometry (T proportions, goal pose, start-state sampler) lives in
 `movensys_imitation/tasks/pusht/geometry.py` and is the single source for the artwork, the scene
 and the scorer. There are no fiducial markers on the T or the sheet (plan v2.1): real episodes are
-scored by segmenting the grey T in the overhead image, as in Chi et al. 2023, and the sheet
-artwork is thin and coloured (green outline, blue marks) so a grey threshold ignores it.
+scored by segmenting the dark blue T in the overhead image, as in Chi et al. 2023, and the sheet
+artwork is thin and coloured (green outline, light blue marks) so the T colour threshold ignores it.
 
 ## Regenerate
 
@@ -63,7 +63,7 @@ default `-0.03 -0.08`, to be fixed after the reach check), `--camera-height` (0.
   0.22 m from the `Link6` origin, so the guard's z setpoint for a tip 10 mm above the table is
   **0.2731 m** (in `scene_9a.json`).
 * **T block**: gym-pusht proportions at 40 mm per unit, 30 mm tall, 0.25 kg, friction 0.40/0.35,
-  plain grey (120, 120, 120) like gym-pusht. Its pose origin is the bar-stem junction; yaw 0 puts
+  dark blue (20, 40, 110). Its pose origin is the bar-stem junction; yaw 0 puts
   the bar along +x on the +y side. It starts at start-state seed 0.
 * **Camera**: a plain `Camera` prim (`/World/camera_top_link/camera_top`) with the D455 colour
   optics, 0.70 m above the table, optical axis straight down, 1280 x 720 at 30 Hz. The RealSense
