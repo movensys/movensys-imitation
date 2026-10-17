@@ -108,3 +108,19 @@ LeRobot only renames features for pretrained checkpoints.
 * `PreTrainedConfig.from_pretrained(..., cli_overrides=[...])` takes policy-level flags
   (`--fm_num_steps=4`, not `--policy.fm_num_steps=4`) and ignores unknown keywords silently;
   `benchmark.measure_latency` checks each override was applied.
+
+## Gripper control in isaac scene
+The gripper is two prismatic finger joints in the robot articulation, picker_1_joint and picker_2_joint, each with a position drive from 0 (open) to 0.045 m (closed). I verified the direction headless in the current scene:
+
+Commanded position	Finger distance
+0.000	100 mm (open)
+0.045	10 mm (fully closed)
+Three ways to close it:
+
+1. Over ROS 2, while the scene plays. The joint-state graph feeds /joint_command into the articulation controller, and it accepts a partial joint list, so you can command only the fingers:
+
+
+source /opt/ros/jazzy/setup.bash
+ros2 topic pub --once /joint_command sensor_msgs/msg/JointState \
+  "{name: [picker_1_joint, picker_2_joint], position: [0.040, 0.040]}"
+Use 0.040 rather than 0.045 to stop at a 20 mm gap, which is the tip diameter. Open again with 0.0. The positions are echoed back on /joint_states.
