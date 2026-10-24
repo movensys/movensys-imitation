@@ -37,7 +37,7 @@ def test_start_pose_deterministic_and_inside_inner_square():
     for seed in range(200):
         pose = g.sample_start_pose(seed)
         c = g.transform_points(g.block_centroid_local()[None, :], pose)[0]
-        assert np.all(np.abs(c) <= g.INNER_SIZE / 2)
+        assert np.all(np.abs(c) <= np.array(g.INNER_SIZE) / 2)
         assert -math.pi <= pose[2] < math.pi
     assert len(g.start_marks()) == g.N_START_MARKS
 

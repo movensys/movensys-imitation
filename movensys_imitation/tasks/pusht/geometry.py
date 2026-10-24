@@ -32,16 +32,17 @@ STEM = (1 * UNIT, 3 * UNIT)
 BLOCK_HEIGHT = 0.030
 BLOCK_MASS = 0.150  # printed at 30 mm per unit: 150 to 250 g depending on infill
 
-SHEET_SIZE = 0.36
-"""Side of the square target sheet, equal to the push area (plan Section 5, v2.4).
+SHEET_SIZE = (0.60, 0.30)
+"""Target sheet (width along x, depth along y) in metres; the push area (plan Section 5, v2.5).
 
-Reduced from 0.45 m on 2026-10-24: with the tool vertical at push height the CR3A reaches the
-table without a Servo singularity slow-down only 0.28 to 0.48 m from its base axis, and at all
-only 0.18 to 0.57 m, so a 0.45 m square does not fit at any centre. At 0.36 m the near and far
-edges lie in Servo's slow-down zone (condition number 17 to 30) but stay reachable.
+The CR3A's reach at push height with the tool vertical is a ring around its base: free of a Servo
+singularity slow-down 0.28 to 0.48 m from the base axis, reachable at all 0.18 to 0.57 m. The
+0.45 m square of v2.0 fit nowhere; v2.3 and v2.4 (2026-10-24) used 0.30 and 0.36 m squares; v2.5
+trades depth for width so the area runs along the ring instead of across it. The near edge and
+the far corners lie in the slow-down zone (condition number 17 to 30) but stay reachable.
 """
-INNER_SIZE = 0.22
-"""Side of the square in which start positions are sampled (about 0.6 x the sheet)."""
+INNER_SIZE = (0.36, 0.18)
+"""Rectangle (width, depth) in which start positions are sampled, 0.6 x the sheet."""
 
 GOAL_YAW = math.pi / 4
 """Goal orientation, as in gym-pusht (goal pose (256, 256, pi/4))."""
@@ -95,13 +96,13 @@ def goal_pose() -> tuple[float, float, float]:
 
 
 def sample_start_pose(seed: int) -> tuple[float, float, float]:
-    """Deterministic start pose for ``seed``: centroid uniform in the inner square, yaw uniform.
+    """Deterministic start pose for ``seed``: centroid uniform in the inner rectangle, yaw uniform.
 
     Seeds 0 to 49 are the evaluation set, 1000 and up the collection set (plan Section 5).
     """
     rng = np.random.default_rng(seed)
-    half = INNER_SIZE / 2
-    cx, cy = rng.uniform(-half, half, size=2)
+    hw, hh = INNER_SIZE[0] / 2, INNER_SIZE[1] / 2
+    cx, cy = rng.uniform(-hw, hw), rng.uniform(-hh, hh)
     yaw = rng.uniform(-math.pi, math.pi)
     c = transform_points(block_centroid_local()[None, :], (0.0, 0.0, yaw))[0]
     return (float(cx - c[0]), float(cy - c[1]), float(yaw))

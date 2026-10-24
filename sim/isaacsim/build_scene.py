@@ -55,9 +55,18 @@ parser.add_argument(
     "--center-wm",
     type=float,
     nargs=2,
-    default=(-0.03, -0.08),
+    default=(-0.03, -0.05),
     metavar=("X", "Y"),
-    help="push-area (sheet) centre in world_manipulator; fixed after the P2.1 reach check",
+    help="push-area (sheet) centre in world_manipulator (plan v2.5: 0.60 x 0.30 m area)",
+)
+parser.add_argument(
+    "--jetson-xy",
+    type=float,
+    nargs=2,
+    default=(0.40, 0.25),
+    metavar=("X", "Y"),
+    help="where to park the 3a scene's 0.20 x 0.20 m Jetson box, in world_manipulator "
+    "(the 3a default (0.36, 0.18) overlaps the wide sheet)",
 )
 parser.add_argument(
     "--camera-height", type=float, default=0.70, help="camera above the table top [m]"
@@ -287,14 +296,25 @@ for stale in (
 assets_abs = HERE / "assets"
 assert (assets_abs / "target_sheet.png").exists(), "missing target_sheet.png: run make_assets.py"
 
+# Jetson box: the 3a scene puts it at (0.36, 0.18) on the table, inside the wide push area. Park
+# it in the table corner (table spans x +-0.50, y +-0.35; the box is 0.20 x 0.20 x 0.07 m).
+jetson = stage.GetPrimAtPath(f"{ROBOT}/world_manipulator/table/jetson_thor")
+if jetson:
+    t = jetson.GetAttribute("xformOp:translate")
+    old = t.Get()
+    t.Set(type(old)(args.jetson_xy[0], args.jetson_xy[1], old[2]))
+    log(f"jetson box moved from wm ({old[0]:.2f}, {old[1]:.2f}) to {tuple(args.jetson_xy)}")
+else:
+    log("no jetson_thor prim in the base scene; nothing to move")
+
 # Sheet frame.
 pusht = UsdGeom.Xform.Define(stage, PUSHT)
 set_xform(pusht.GetPrim(), sheet_world, WM_IN_WORLD)
 UsdGeom.Scope.Define(stage, LOOKS)
 
 # Target sheet (visual only, 0.3 mm above the table so it does not z-fight).
-half = g.SHEET_SIZE / 2
-sheet = quad(stage, SHEET, -half, -half, half, half, 0.0003)
+hw, hh = g.SHEET_SIZE[0] / 2, g.SHEET_SIZE[1] / 2
+sheet = quad(stage, SHEET, -hw, -hh, hw, hh, 0.0003)
 bind(
     sheet.GetPrim(),
     texture_material(stage, f"{LOOKS}/sheet_material", str(assets_abs / "target_sheet.png")),
@@ -614,7 +634,16 @@ meta = {
         "robot_base_in_world_manipulator": [-0.03, 0.275, 0.05],
     },
     "table_top_z_world_manipulator": table_z,
-    "push_area": {"size_m": g.SHEET_SIZE, "center_wm": [cx_wm, cy_wm]},
+    "push_area": {
+        "size_m": list(g.SHEET_SIZE),
+        "axes": "(width x, depth y)",
+        "center_wm": [cx_wm, cy_wm],
+    },
+    "jetson_box_wm": {
+        "xy": list(args.jetson_xy),
+        "size_m": [0.20, 0.20, 0.07],
+        "note": "moved from the 3a default (0.36, 0.18); the manipulator URDF still has it there",
+    },
     "block_prim": BLOCK,
     "block_rest_z_in_sheet": 0.0,
     "markers": "none (plan v2.1); real scoring is in overhead pixel space",

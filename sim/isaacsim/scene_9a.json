@@ -6,7 +6,7 @@
     "sheet_in_world_manipulator": {
       "xy": [
         -0.03,
-        -0.08
+        -0.05
       ],
       "z": 0.04312009157810337,
       "yaw": 0.0
@@ -27,11 +27,27 @@
   },
   "table_top_z_world_manipulator": 0.04312009157810337,
   "push_area": {
-    "size_m": 0.36,
+    "size_m": [
+      0.6,
+      0.3
+    ],
+    "axes": "(width x, depth y)",
     "center_wm": [
       -0.03,
-      -0.08
+      -0.05
     ]
+  },
+  "jetson_box_wm": {
+    "xy": [
+      0.4,
+      0.25
+    ],
+    "size_m": [
+      0.2,
+      0.2,
+      0.07
+    ],
+    "note": "moved from the 3a default (0.36, 0.18); the manipulator URDF still has the old place"
   },
   "block_prim": "/World/pusht/t_block",
   "block_rest_z_in_sheet": 0.0,

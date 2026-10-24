@@ -48,18 +48,22 @@ z = 0.14 so the tip bottom is at 0.22 m. Reference them with
 `prim.GetReferences().AddReference("./assets/t_block.usd")`.
 
 `build_scene.py --help` lists the flags: `--center-wm X Y` (push-area centre in `world_manipulator`,
-default `-0.03 -0.08`, to be fixed after the reach check), `--camera-height` (0.70 m) and
-`--tip-length` (0.08 m).
+default `-0.03 -0.05`), `--jetson-xy X Y` (where the Jetson box goes, default `0.40 0.25`),
+`--camera-height` (0.70 m) and `--tip-length` (0.08 m).
 
 ## Frames and numbers
 
 * **Sheet frame** = prim `/World/pusht`: origin at the push-area centre on the table top, axes
   parallel to `world_manipulator` (the robot base is on the +y side). Everything PushT-specific is
   expressed here: the block pose topic, the teleport topic, the goal pose and the start marks.
-* **Push area**: 0.36 x 0.36 m (plan v2.4; 0.45 m until 2026-10-24, which the arm could not reach
-  at either edge). With the default centre the sheet spans `world_manipulator` x -0.21..0.15,
-  y -0.26..0.10; the table edge is at y = -0.35 and the base at y = 0.275. The near and far edges
-  are inside Servo's singularity slow-down zone, so teleop is slower there.
+* **Push area**: 0.60 m wide (x) by 0.30 m deep (y) (plan v2.5; a 0.45 m square until 2026-10-24,
+  which the arm could not reach at either edge). With the default centre (-0.03, -0.05) the sheet
+  spans `world_manipulator` x -0.33..0.27, y -0.20..0.10; the table is x -0.50..0.50, y -0.35..0.35
+  and the base is at y = 0.275. The near edge and the far corners are inside Servo's singularity
+  slow-down zone, so teleop is slower there. The 3a scene's Jetson box (0.20 x 0.20 m, 3a default
+  (0.36, 0.18)) is parked in the table corner at (0.40, 0.25) by `--jetson-xy`; the manipulator
+  URDF still places it at (0.36, 0.18), so MoveIt's collision world disagrees with Isaac there
+  until `movensys_manipulator.urdf` follows.
 * **Table top**: z = 0.0431 m in `world_manipulator` (measured from the 3a collision mesh).
 * **Pusher tip**: 20 mm cylinder on the `Link6` +z axis from 0.14 to 0.22 m. The tip bottom is
   0.22 m from the `Link6` origin, so the guard's z setpoint for a tip 10 mm above the table is
