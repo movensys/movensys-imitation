@@ -4,11 +4,21 @@ Compare ACT, Diffusion Policy and Flow Matching on PushT with the Dobot CR3A. De
 
 | | |
 |---|---|
-| Version | 2.0, 2026-10-13. Merges `movensys_imitation_plan.md` (v1.1) and `Simplified_plan.md`; both are archived under `plan/archive/`. |
+| Version | 2.5, 2026-10-24. v2.3 and v2.4 (same day) resized the push area and the T to fit the arm's reach. v2.2 (2026-10-17) made the T dark blue. v2.1 (2026-10-16) removed all markers. v2.0 (2026-10-13) merged `movensys_imitation_plan.md` (v1.1) and `Simplified_plan.md`; both are archived under `plan/archive/`. |
 | Host | Ubuntu 24.04, ROS 2 Jazzy, Python 3.12, RTX 5090, Isaac Sim 5.1 (`~/isaac-sim`), WMX3 SDK (`/opt/wmx3`) |
 | Start | 2026-10-13, 10 weeks, one engineer (7 to 8 weeks with a controls engineer **C** and an ML engineer **M** in parallel) |
 
-**Changes from v1 (review and accept or revert each):** T block scaled to 40 mm per unit so a 40 mm tag fits on it (v1 geometry had no room for the tag); overhead camera at 1280 x 720 so tags are large enough to detect from 0.7 m; real-robot checkpoint chosen by validation loss, not by sim score; 30 real trials per policy instead of 20; the guard arbitrates between teleop and policy input by mode; Phase 0 given two weeks and Phase 2 shortened by one; optional extras cut to a single list.
+**Changes in v2.5 (2026-10-24):** the push area becomes a **0.60 m wide x 0.30 m deep rectangle** (start rectangle 0.36 x 0.18 m), centre world_manipulator (-0.03, -0.05). The arm's reach at push height is a ring around the base, so width is cheap and depth is not: the v2.4 0.36 m square had its far corners at condition number 29, just under Servo's hard stop of 30, while taking 6 cm off the depth allows 0.62 m of width with the corners near 25. The T stays at 30 mm per unit, giving 20 units across and 10 deep. The policy crop becomes a fixed square that contains the sheet, with table strips above and below (T stem about 5 px in the 96 px image, as in gym-pusht). The Jetson box, 0.20 x 0.20 m at (0.36, 0.18) in the 3a scene, overlapped the wide sheet and is parked in the table corner at (0.40, 0.25) in sim; the real Jetson moves the same way and the manipulator URDF has to follow, since MoveIt's collision world still holds the old position. Artwork, sheet spec, scene and scene spec regenerated.
+
+**Changes in v2.4 (2026-10-24):** the T goes from 40 mm to **30 mm per unit** (bar 120 x 30 mm, stem 30 x 90 mm, height 30 mm, 150 to 250 g) and the push area from the v2.3 0.30 m to **0.36 x 0.36 m**, start square 0.22 m, centre unchanged. At 0.30 m with the 40 mm T the arena was only 7.5 T units across and the start poses overlapped the goal; 0.36 m is the largest square the reach map allows, with the near and far edges inside Servo's slow-down zone (condition number 17 to 30, speed scaled down, no halt). Together the two changes give 12 T units across, better than the 11 of v2.0. This reverts the v2.0 choice of 40 mm, which was made for mask quality: at 0.7 m and 1280 x 720 the 30 mm stem is still about 27 px wide, and the 20 mm tip against a 30 mm stem is closer to gym-pusht's proportions. The real block has not been printed, so the change costs nothing on hardware. Artwork, sheet spec, standalone T asset, scene and scene spec regenerated.
+
+**Changes in v2.3 (2026-10-24):** the push area shrinks from 0.45 x 0.45 m to **0.30 x 0.30 m** and the start square from 0.30 to 0.18 m; the centre stays at world_manipulator (-0.03, -0.08). Reason: teleop could not reach the sheet edge nearest the robot. An IK sweep of the CR3A URDF at push height with the tool vertical shows the arm clear of Servo's singularity slow-down only 0.28 to 0.48 m from its base axis, a 0.20 m deep band; the 0.45 m sheet had its near edge at 0.13 m (unreachable) and its far edge at 0.58 m (Servo hard stop), so no centre could fix it. A 0.30 m square at the current centre sits almost entirely in the clean band. The T stays at 40 mm per unit (7.5 units across the area, versus 11 before and about 17 in gym-pusht; the T is larger in the 96 x 96 policy image, which helps segmentation and the policy). Sheet artwork, sheet spec, scene and scene spec regenerated. The P2.1 teleop reach check remains the final word.
+
+**Changes in v2.2 (2026-10-17):** the T is dark blue, RGB (20, 40, 110), in sim and on the real block, instead of gym-pusht's grey. The sim scene, the standalone T asset and the sheet spec were regenerated with it. The start marks stay a lighter blue (60, 110, 220) and the goal outline green, so the P2.3 colour threshold separates the T from the marks by brightness as well as hue. Everything else in v2.1 stands.
+
+**Changes in v2.1 (2026-10-16):** no markers anywhere. Real episodes are scored the way Chi et al. 2023 scored their real Push-T: the camera is fixed, the T is segmented in the overhead image, and coverage is computed in pixel space against a goal mask captured once from a frame with the T placed on the printed outline. No AprilTags, no homography, no camera-to-sheet calibration; the one-time camera setup stores the crop rectangle, the goal mask and a reference frame. The same procedure gives the sim goal mask (teleport the T to the goal pose, grab a frame), so sim validates the exact scorer used on the real robot. The policy sees a plain dark blue T on a plain sheet, the same in sim and real. The block size (40 mm per unit) and the 1280 x 720 camera stay for mask quality. Coverage and the 0.95 threshold stay as the metric so R2 and R4 remain comparable with R1 (the paper reports end-state IoU against the demonstration minimum; `scoring.py` records end-state IoU as well). The real block pose in metres is not recorded; nothing in the real metrics needs it.
+
+**Changes from v1 (review and accept or revert each):** T block scaled to 40 mm per unit (v1 geometry was too small to segment and push reliably); overhead camera at 1280 x 720 so the T mask is clean from 0.7 m; real-robot checkpoint chosen by validation loss, not by sim score; 30 real trials per policy instead of 20; the guard arbitrates between teleop and policy input by mode; Phase 0 given two weeks and Phase 2 shortened by one; optional extras cut to a single list.
 
 ---
 
@@ -48,8 +58,8 @@ Update at every review. Status: `Not started`, `In progress`, `Blocked`, `Done`.
 
 | ID | Milestone | Target week (dates) | Status | Evidence |
 |---|---|---|---|---|
-| M0 | Environment, Quest teleop in sim, WMX streaming decision | 2 (Oct 13 to 24) | Done 2026-10-15 | P0.1 to P0.7 status cells; `doc/1_setup.md` sections 1.3 to 1.6 pending (P0.8) |
-| M1 | Three policies benchmarked on gym-pusht, configs frozen | 3 (Oct 27 to 31) | Not started | |
+| M0 | Environment, Quest teleop in sim, WMX streaming decision | 2 (Oct 13 to 24) | Done 2026-10-15 | P0.1 to P0.8 status cells; `doc/1_setup.md` |
+| M1 | Three policies benchmarked on gym-pusht, configs frozen | 3 (Oct 27 to 31) | Done 2026-10-24 (benchmark finished 2026-10-16) | Table R1 below; `results/gym/*.csv`, `results/gym/R1.md`; configs in `movensys_imitation/configs/` frozen |
 | M2 | Sim dataset collected, three policies evaluated on 50 start states | 6 (Nov 17 to 21) | Not started | |
 | M3 | Policy episode through WMX-R2 on the simu platform, controller merged | 6 (Nov 17 to 21) | Not started | |
 | M4 | Real-robot evaluation, 30 trials x 3 policies | 9 (Dec 8 to 12) | Not started | |
@@ -88,7 +98,7 @@ Goal: prove the existing stack, the ML environment and the WMX streaming path wo
 | P0.5 | Build the teleop container, install the CloudXR runtime from NGC, run `quest_pose.launch.py`, connect the Quest, then run `quest_servo_teleop.launch.py motion_mode:=planar` in sim. | C | `/quest_pose_publisher/controller_pose_right` at about 55 Hz; arm follows the hand in Isaac | Done 2026-10-15 (`quest_pose_node` with `hand:=both pose_source:=aim` and the CloudXR runtime observed running) |
 | P0.6 | **Streaming controller decision.** Compare `joint_position_controller`, `servo_stream_controller` (wmx-r2 `feature/api-buffer-command-streaming*`), the wmx-r2 cyclic-buffer branch and the two manipulator-side cyclic-buffer branches (`feature/cyclic-buffer-for-moveit-servo`, `feature/moveit-servo-cyclic-buffer`). Pick one, rebase on `main`, open a PR. Fix the gripper node's hard-coded `/opt/lmx/` path. | C | PR open; a one-page comparison note in `doc/1_setup.md` | Done 2026-10-15 (reported at review; add the chosen controller and PR link here) |
 | P0.7 | WMX simu platform: extend `simu_network.def` to six axes, launch `wmx_r2_cr3a_manipulator.launch.py` with the chosen controller, publish a hand-made `JointTrajectory`. | C | `/joint_states` follows the trajectory | Done 2026-10-15 (reported at review) |
-| P0.8 | Write `doc/1_setup.md`: venv, containers, domain ID, sim time, CloudXR, the `sudo --preserve-env` line for wmx-r2. | C | A second person reproduces P0.2 to P0.7 from the doc | In progress: sections 1.3 to 1.6 of `doc/1_setup.md` are still placeholders |
+| P0.8 | Write `doc/1_setup.md`: venv, containers, domain ID, sim time, CloudXR, the `sudo --preserve-env` line for wmx-r2. | C | A second person reproduces P0.2 to P0.7 from the doc | Done 2026-10-24 (declared at review; sections 1.1 and 1.2 written, sections 1.3 to 1.6 of `doc/1_setup.md` still read "to be written" and carry only the wmx-r2 launch line) |
 
 Main blocker: WMX-R2 streaming. The chosen controller also shapes the smoothness metric (one interpolation per 40 Hz Servo message gives stop-and-go motion), so the choice must be fixed before any comparison and reported with the results.
 
@@ -101,8 +111,8 @@ Goal: a reliable benchmark and a tested Flow Matching policy before any robot-sp
 | P1.1 | Implement `flow_matching_unet` (Section 6) with unit tests: shapes, loss decreases on synthetic data, 1-step and 16-step samplers finite and seed-deterministic, 2-D toy velocity field matches Meta's `flow_matching` library. | M | Tests pass | Done 2026-10-14: `movensys_imitation/policies/flow_matching_unet/`, 15 tests pass (`test_flow_matching_unet.py`) |
 | P1.2 | `movensys-train` and `movensys-eval` entry points that register the policy and call LeRobot's mains; YAMLs for the three policies. | M | `--policy.type=flow_matching_unet` resolves | Done 2026-10-14: `configs/{pusht_gym,diffusion,flow_matching,act}.yaml`, comma-separated `--config_path`; 300-step smoke train, reload and eval of `flow_matching_unet` passed |
 | P1.3 | Reference run: Diffusion on `lerobot/pusht`, 200 k steps, 50 eval episodes. | M | Success within the 65 % band of the model card | Done 2026-10-14: 58 % final eval (64 % at the step-200k in-training eval), 50 episodes, 4.5 h on one GPU; `scripts/ref_diffusion_pusht.sh`, outputs in `outputs/ref_diffusion_pusht/` |
-| P1.4 | Benchmark: ACT (default horizon and matched 16/8, with and without VAE), Diffusion (DDIM 10, DDPM 100 at inference), Flow Matching (Euler 1, 2, 4, 8, 16 at inference). 100 k steps, batch 64, 3 seeds, 50 fixed episodes each. Record train time, peak VRAM, latency mean and p95. | M | Table R1 filled | Running since 2026-10-14: `scripts/benchmark_gym.sh` (`movensys-benchmark`), 18 trainings, about 35 GPU hours; CSVs land in `results/gym/` |
-| P1.5 | `compare.py` builds tables and plots from the eval CSVs; freeze hyperparameters for the robot phases. | M | Frozen configs committed | `movensys-compare` written and tested on a smoke matrix 2026-10-14; freeze after P1.4 finishes |
+| P1.4 | Benchmark: ACT (default horizon and matched 16/8, with and without VAE), Diffusion (DDIM 10, DDPM 100 at inference), Flow Matching (Euler 1, 2, 4, 8, 16 at inference). 100 k steps, batch 64, 3 seeds, 50 fixed episodes each. Record train time, peak VRAM, latency mean and p95. | M | Table R1 filled | Done 2026-10-16: 18 trainings via `scripts/benchmark_gym.sh` (`movensys-benchmark`), about 35 GPU hours; CSVs in `results/gym/`; Table R1 filled 2026-10-24 by `movensys-compare --write-plan` |
+| P1.5 | `compare.py` builds tables and plots from the eval CSVs; freeze hyperparameters for the robot phases. | M | Frozen configs committed | Done 2026-10-24: `movensys-compare` regenerates `results/gym/R1.md`, the plot and Table R1; hyperparameters in `movensys_imitation/configs/` frozen as of this date |
 | P1.6 | Convert `lerobot/pusht` into the recorder's schema (Section 6, pixel units) to prove the feature definitions train. | M | One training run on the converted set | Done 2026-10-14: `movensys-convert-gym` (`data/convert_gym_pusht.py`), Diffusion trains on the converted set (`doc/3_gym_pusht.md`) |
 
 Exit: three policies train and evaluate in one harness; Diffusion reproduces the published range; Flow Matching with 4 to 8 Euler steps is within noise of Diffusion; configs frozen and not re-tuned afterwards.
@@ -113,9 +123,9 @@ Goal: the whole collection and inference pipeline on the simulated CR3A with gro
 
 | ID | Task | Owner | Done when | Status |
 |---|---|---|---|---|
-| P2.1 | Scene `9a_pusht_simulation.usd` from `3a`: T block, target sheet, pusher tip under `Link6`, overhead camera from `7b` at 1280 x 720 and 30 Hz on `/image_top/rgb`, T pose publisher `/pusht/t_block/pose`, T teleport subscriber `/pusht/t_block/pose_cmd`. Reach check over the whole push area at push height with the tool down; fix the area centre. | C | Teleop reaches all four corners without Servo singularity slow-down | |
+| P2.1 | Scene `9a_pusht_simulation.usd` from `3a`: T block, target sheet, pusher tip under `Link6`, overhead camera from `7b` at 1280 x 720 and 30 Hz on `/image_top/rgb`, T pose publisher `/pusht/t_block/pose`, T teleport subscriber `/pusht/t_block/pose_cmd`. Reach check over the whole push area at push height with the tool down; fix the area centre. | C | Teleop reaches all four corners (slow-down near the edges allowed, no halt) | Done 2026-10-24: scene built by `sim/isaacsim/build_scene.py` (sheet, T, tip, top and hand cameras, pose and teleport graphs), `smoke_check.py` 18/18 headless (cameras and pose topic at about 22 Hz, not the 30 Hz above; accepted). Push area fixed at 0.60 x 0.30 m, centre world_manipulator (-0.03, -0.05) from the IK reach map (v2.5) after teleop could not reach the 0.45 m sheet's near edge; near edge and far corners are in Servo's slow-down zone by design. Jetson box parked at (0.40, 0.25). Teleop corner check at the new size not run; declared done at the 2026-10-24 review |
 | P2.2 | `planar_guard` with tests (z and orientation lock, workspace clamp, step limit, EEF-distance limit, watchdog, Servo POSE switch, source arbitration by mode) and `task.yaml`, `guard.yaml`. | C | Tests pass; teleop runs through the guard | |
-| P2.3 | `pusht_scorer` (sim mode) and `tasks/pusht/scoring.py` (shapely coverage), tests against hand-computed cases. | M | Tests pass | |
+| P2.3 | `tasks/pusht/scoring.py` with two backends: geometric (shapely coverage from a block pose; sim ground truth) and pixel (T mask from the overhead crop by colour threshold plus morphological opening, coverage and IoU against a stored goal mask). `setup_camera.py`: with the T on the goal (sim: teleported to `goal_pose()`; real: placed on the printed outline by hand) grab one frame, store the crop rectangle, the goal mask, the T's pixel area and the frame itself as the reference. `pusht_scorer` runs both backends in sim and logs their difference; tests against hand-computed cases. | M | Tests pass; pixel and geometric coverage agree within 0.02 on 20 sim episodes, including end states near the threshold | |
 | P2.4 | `episode_recorder`, `episode_manager`, `collect.launch.py mode:=sim`. Pilot 10 episodes; check with `lerobot-dataset-viz`; replay check (recorded actions through the guard reproduce the final T pose); reset repeatability check (10 teleports, T velocity zero after each). | M + C | Pilot dataset passes all three checks | |
 | P2.5 | Operator tuning: `position_scale`, guard step, crop, tip height. Write the operator guide in `doc/4_sim.md`. | C | Operator reaches 0.95 coverage in under 25 s on most tries | |
 | P2.6 | Collect 150 to 200 episodes on seeds 1000+; keep successes; log the discard rate. | C | Dataset `movensys/pusht_cr3a_sim_v1` with stats | |
@@ -142,9 +152,9 @@ Goal: real demonstrations, real training, real evaluation.
 
 | ID | Task | Owner | Done when | Status |
 |---|---|---|---|---|
-| P4.1 | Hardware: print the T and tip, laminate the sheet, mount the overhead camera. Confirm EtherCAT enabled in `/opt/wmx3/Module.ini`, licence valid, E-stop tested. | C | Checklist signed in `doc/6_real.md` | |
+| P4.1 | Hardware: print the T (matte dark blue, RGB (20, 40, 110), no marker) and tip, laminate the sheet, mount the overhead camera. Confirm EtherCAT enabled in `/opt/wmx3/Module.ini`, licence valid, E-stop tested. | C | Checklist signed in `doc/6_real.md` | |
 | P4.2 | Enable per-axis soft limits in `cr3a_wmx_parameters.xml` from the Phase 2 joint envelope plus margin (currently disabled on all axes). Verify Servo joint limits and that the gripper closes on the tip. | C | A commanded out-of-limit move is refused | |
-| P4.3 | `cameras_real.launch.py`: overhead RealSense at 1280 x 720, 30 fps, on `/image_top/*`; second `apriltag_detector` on it; scorer in real mode. Workspace alignment: jog the tip to three sheet marks, store the sheet-to-base transform. | C | Scorer reports coverage from the tags; tags detected across the whole area | |
+| P4.3 | `cameras_real.launch.py`: overhead RealSense at 1280 x 720, 30 fps, on `/image_top/*`, camera clamped so it cannot be nudged. Camera setup once per mount with `setup_camera.py` (P2.3): T on the printed outline, one frame, crop and goal mask and reference frame into `real_calibration.yaml`; scorer in pixel mode with the colour thresholds in `scorer.yaml`. Every session starts with `check_camera.py`: current frame against the reference frame (sheet corners and outline within 3 px), refuse to record or run otherwise. Workspace alignment: jog the tip to three sheet marks, store the sheet-to-base transform. | C | With the T placed by hand on the goal outline the scorer reads coverage >= 0.97; the T mask is clean over the whole area under both lighting conditions, with the arm retracted; the session check passes and fails when the camera is nudged on purpose | |
 | P4.4 | Low-speed path check: Servo `scale.linear` 0.1, guard step 2 mm, Quest teleop with `use_sim_time:=false` everywhere. Verify z lock, clamp, watchdog, dead-man and E-stop. Confirm `/wmx/moveit2/eef_pose` matches the sim frames. | C | Recorder and runner run unchanged against the real robot | |
 | P4.5 | Collect 100 to 150 real episodes on the numbered start marks, two lighting conditions, one operator. | C | Dataset `movensys/pusht_cr3a_real_v1` | |
 | P4.6 | Train the three policies on real data, 3 seeds. Pick one checkpoint per policy by validation loss before any real evaluation. | M | 9 checkpoints; selection written down before P4.7 | |
@@ -185,13 +195,18 @@ Fill from the CSVs in `results/<stage>/`. Mean and standard deviation over train
 
 | Policy / variant | Success 0.95 | Success 0.90 | Avg max cov | Train h | VRAM GB | Latency ms (p95) |
 |---|---|---|---|---|---|---|
-| Diffusion, 200 k reference (model card: 65.4 %) | 58 (64 at step 200k in-training eval) | 78 | 0.87 | 4.5 | 5.0 | not measured |
-| ACT default (chunk 100, ensembling) | | | | | | |
-| ACT matched 16/8 | | | | | | |
-| ACT matched, no VAE | | | | | | |
-| Diffusion DDIM 10 | | | | | | |
-| Diffusion DDPM 100 | | | | | | |
-| Flow Matching Euler 1 / 2 / 4 / 8 / 16 | | | | | | |
+| Diffusion, 200 k reference (model card: 65.4 %) | 58.0 | 78.0 | 0.87 | 4.5 | 5.0 | 390.0 | <!-- 1 seed(s) -->
+| ACT default (chunk 100, ensembling) | 0.0 ± 0.0 | 1.3 ± 1.2 | 0.37 ± 0.01 | 2.9 | 2.8 | 5.7 |
+| ACT default, no VAE | 0.7 ± 1.2 | 0.7 ± 1.2 | 0.38 ± 0.01 | 2.9 | 1.2 | 2.5 |
+| ACT matched 16/8 | 26.7 ± 5.8 | 46.0 ± 5.3 | 0.63 ± 0.01 | 1.9 | 1.2 | 2.5 |
+| ACT matched, no VAE | 28.0 ± 7.2 | 44.7 ± 6.4 | 0.63 ± 0.04 | 2.0 | 0.8 | 3.0 |
+| Diffusion DDIM 10 | 65.3 ± 4.2 | 88.7 ± 1.2 | 0.91 ± 0.00 | 2.2 | 5.0 | 40.5 |
+| Diffusion DDPM 100 | 64.0 ± 12.2 | 88.7 ± 2.3 | 0.91 ± 0.02 | 2.2 | 5.0 | 382.1 |
+| Flow Matching Euler 1 | 43.3 ± 3.1 | 81.3 ± 1.2 | 0.86 ± 0.02 | 2.2 | 5.0 | 4.9 |
+| Flow Matching Euler 2 | 54.0 ± 4.0 | 81.3 ± 4.2 | 0.87 ± 0.03 | 2.2 | 5.0 | 8.8 |
+| Flow Matching Euler 4 | 56.7 ± 3.1 | 83.3 ± 1.2 | 0.88 ± 0.01 | 2.2 | 5.0 | 16.7 |
+| Flow Matching Euler 8 | 57.3 ± 12.2 | 88.7 ± 2.3 | 0.91 ± 0.02 | 2.2 | 5.0 | 32.4 |
+| Flow Matching Euler 16 | 65.3 ± 10.3 | 88.0 ± 7.2 | 0.91 ± 0.01 | 2.2 | 5.0 | 63.4 |
 
 **R2. Isaac Sim** (50 start states, 3 seeds)
 
@@ -229,10 +244,10 @@ Dataset: episodes collected ___, kept ___, lighting conditions ___, operator ___
 |---|---|
 | Robot | Dobot CR3A, `joint1..joint6`, EEF `Link6`, planning frame `world_manipulator` |
 | Pusher | Printed 20 mm cylinder tip held by the closed gripper; tool axis vertical, fixed yaw, tip bottom 10 mm above the table; only x, y move |
-| Push area | 0.45 x 0.45 m square in front of the robot, centre fixed after the P2.1 reach check |
-| T block | gym-pusht proportions at **40 mm per unit**: bar 160 x 40 mm, stem 40 x 120 mm, height 30 mm, 200 to 300 g; AprilTag 36h11 id 10 (36 mm) at the bar-stem junction, same in sim and real |
-| Target | T outline printed on a laminated sheet with AprilTag id 20 (50 mm) at a known offset and 30 numbered start marks with orientation |
-| Start states | T position uniform in the inner 0.30 x 0.30 m, yaw uniform; EEF home at one corner. Seeds 0 to 49 evaluate, 1000+ collect; 30 marks on the real sheet |
+| Push area | 0.60 m wide x 0.30 m deep rectangle in front of the robot (v2.5; the arm's reach is a ring around the base, so the area is wide, not deep), centre at world_manipulator (-0.03, -0.05); the near edge and the far corners are in Servo's slow-down zone. Jetson box parked in the table corner at (0.40, 0.25), sim and real |
+| T block | gym-pusht proportions at **30 mm per unit** (v2.4): bar 120 x 30 mm, stem 30 x 90 mm, height 30 mm, 150 to 250 g; matte dark blue, RGB (20, 40, 110) (v2.2; gym-pusht's T is grey), **no marker**, same look in sim and real |
+| Target | T outline printed on a white laminated sheet with 30 numbered start marks with orientation; no markers. Outline and marks are thin and coloured so the T mask threshold ignores them |
+| Start states | T position uniform in the inner 0.36 x 0.18 m, yaw uniform; EEF home at one corner. Seeds 0 to 49 evaluate, 1000+ collect; 30 marks on the real sheet |
 | Rates | policy 10 Hz, guard and teleop 50 Hz, Servo 40 Hz, WMX3 1 kHz |
 | Episode | 300 policy steps (30 s) |
 
@@ -240,12 +255,13 @@ Dataset: episodes collected ___, kept ___, lighting conditions ___, operator ___
 
 | Key | Shape | Content | Sim source | Real source |
 |---|---|---|---|---|
-| `observation.images.top` | video 256 x 256 x 3 | overhead RGB cropped to the push area, crop anchored on the sheet tag | `/image_top/rgb` | `/image_top/rgb` |
+| `observation.images.top` | video 256 x 256 x 3 | overhead RGB cropped to a fixed square that contains the 0.60 x 0.30 m push area (v2.5; table strips above and below the sheet), chosen once at camera setup (sim: from the known camera pose; real: `real_calibration.yaml`) | `/image_top/rgb` | `/image_top/rgb` |
 | `observation.state` | float32 (2,) | pusher x, y in `world_manipulator` (m) | `/wmx/moveit2/eef_pose` | same |
 | `action` | float32 (2,) | guarded target x, y at this 10 Hz tick | `/pusht/target_guarded` | same |
 | `observation.joints` | float32 (6,) | joint positions (analysis only) | `/joint_states` | same |
-| `block_pose` | float32 (3,) | T x, y, yaw in the sheet frame (not a policy input) | `/pusht/t_block/pose` | tag 10 relative to tag 20 |
-| `coverage` | float32 (1,) | scorer output | scorer | scorer |
+| `block_pose` | float32 (3,) | T x, y, yaw in the sheet frame (not a policy input) | `/pusht/t_block/pose` | not available (NaN); real metrics use coverage, IoU, EEF path and timing only |
+| `coverage` | float32 (1,) | scorer output; on real, from the pixel scorer | scorer (geometric) | scorer (pixel) |
+| `iou` | float32 (1,) | T-to-goal IoU from the same masks or polygons (the paper's metric, reported alongside coverage) | scorer | scorer |
 
 Episode metadata: start-state id, operator, sim or real, Servo scale, guard parameters, software versions, success, time to success. Images are decoded from `sensor_msgs/Image` with numpy, never `cv_bridge` (apt `cv_bridge` is built against numpy 1.26; LeRobot needs numpy 2).
 
@@ -275,7 +291,7 @@ quest_servo_teleop (50 Hz)    ─┘   (host venv)                              
 
 **Episode loop** (`episode_manager`): reset (sim: teleport the T, home the EEF through the guard; real: show the start mark, wait for the operator), record at exactly 10 Hz, stop on coverage >= 0.95, 300 steps or a key, score, save or discard. Keyboard plus a `Trigger` service for scripted sweeps.
 
-**Real-robot sensing.** Overhead RealSense at 1280 x 720, 30 fps (a 36 mm tag at 0.7 m is about 48 px, enough for tag36h11; at 640 x 480 it would be about 24 px and unreliable). The scorer reads the two tag TFs and computes the T pose in the sheet frame, so no camera-to-robot calibration is needed for scoring. The wrist will occlude the T tag during pushes, so the scorer keeps the last valid pose and always scores once more after the arm retracts at episode end. The sheet-to-base transform from the three-mark alignment maps start marks to base-frame poses and is not used by the policy.
+**Real-robot sensing.** Overhead RealSense at 1280 x 720, 30 fps, fixed. Scoring follows Chi et al. 2023 and happens entirely in pixel space: the scorer segments the dark blue T from the white sheet in the overhead crop (colour threshold, morphological opening, one connected component whose area is within 15 % of the T's reference pixel area) and computes coverage, and IoU, against the goal mask captured at camera setup with the T placed on the printed outline. There is no camera calibration, no marker and nothing is detected during an episode. The wrist and the tip occlude part of the T during pushes; occlusion only removes T pixels, so live coverage is a lower bound and stopping on coverage >= 0.95 is never a false stop. The authoritative score is taken once more after the arm retracts at episode end, which is also when the paper measured its IoU. Sim runs the same pixel scorer, with a goal mask captured the same way, next to the physics ground truth and logs the difference (P2.3), so the real scorer's error is known before any real trial. Because the crop, the goal mask and the trained policies all assume one camera pose, the camera is mechanically fixed and every session begins with a frame check against the stored reference (P4.3). The sheet-to-base transform from the three-mark alignment maps start marks to base-frame poses and is not used by the policy.
 
 ### Repository layout
 
@@ -284,7 +300,7 @@ movensys-imitation/
 ├── movensys_imitation/          policies/flow_matching_unet/  tasks/pusht/  data/  configs/  cli/  compare.py  tests/
 ├── movensys_imitation_ros/      planar_guard  episode_recorder  episode_manager  pusht_scorer  policy_runner  eval_sim  eval_real
 │   ├── launch/                  collect.launch.py  run_policy.launch.py  cameras_real.launch.py   (mode:=sim|hil|real)
-│   └── config/dobot_cr3a/       task.yaml  guard.yaml  recorder.yaml  real_calibration.yaml  apriltag_top.yaml
+│   └── config/dobot_cr3a/       task.yaml  guard.yaml  recorder.yaml  real_calibration.yaml  scorer.yaml
 ├── sim/isaacsim/                9a_pusht_simulation.usd  9b_pusht_hil.usd  assets/
 ├── hardware/                    t_block.stl  pusher_tip.stl  target_sheet.pdf  camera_mount.md
 ├── results/                     committed CSVs per stage (tables regenerate from these)
@@ -321,8 +337,9 @@ Fairness: same dataset and split, same resolution and augmentation where the met
 | Streaming controller not merged or jerky on six axes | M / H | Decide in P0.6; HIL (Phase 3) before hardware; report the controller with the smoothness numbers |
 | Quest / CloudXR bring-up slow | M / M | Start week 1; fallbacks: `keyboard_teleop` for pilots, a mouse-on-image teleop node if the Quest is unavailable |
 | Demonstrations through Servo too slow or jerky | M / H | Pilot and tuning (P2.5), replay check, keep successes only |
-| Tags too small or occluded on the real setup | M / M | 1280 x 720, 36 mm tag on a 40 mm per unit T, end-of-episode scoring; fallback: colour segmentation of the T |
-| Sim-to-real image gap | H / M | Real policies train on real data; sim validates the pipeline; same tag-anchored crop; two lighting conditions |
+| T mask corrupted on the real setup (shadows, glare, the wrist or tip in the crop, marks on the sheet) | M / M | White matte sheet, matte dark blue T, thin coloured sheet artwork, mask area check, end-of-episode scoring with the arm retracted, scorer validated against ground truth in sim (P2.3), both lighting conditions in the dataset; fallback: a marker on the T with tag-based scoring (the v2.0 design) |
+| Camera moved between sessions (crop, goal mask and trained policies all assume one view) | M / H | Clamped mount; `check_camera.py` at every session start against the reference frame; if it fails, re-run `setup_camera.py` and treat earlier episodes as a separate camera pose |
+| Sim-to-real image gap | H / M | Real policies train on real data; sim validates the pipeline; same fixed crop of the same plain T on a plain sheet; two lighting conditions |
 | Schedule has no slack | H / M | Phase 0 is two weeks; cut real-data seeds to 2 before cutting phases |
 | Real-robot damage from a bad action | L / H | Phase 4 checklist and the five safety layers |
 | numpy 2 breaks system Python packages in the venv | H / L | Only `rclpy`, `tf2_ros` and message packages from the system; numpy image decoding |
@@ -385,7 +402,6 @@ LeRobot 0.6.1 needs Python >= 3.12, torch 2.7 to 2.11, numpy 2.0 to 2.2. Isaac S
 | `/wmx/set_gripper` | `std_srvs/SetBool` | `sim_bridge` (sim), `gripper_controller` (real) | true = close on the tip |
 | `/image_top/rgb`, `/image_top/camera_info` | `Image`, `CameraInfo` | Isaac camera or RealSense | 1280 x 720, 30 Hz |
 | `/pusht/t_block/pose`, `/pusht/t_block/pose_cmd` | `geometry_msgs/Pose` | Isaac graphs | ground truth 30 Hz; teleport on reset |
-| TF `camera_top_color_optical_frame -> tag36h11:10`, `:20` | TF | `apriltag_detector` (real) | T and sheet tags |
 | `/wmx/engine/ready`, `/wmx/core_motion/ready` | `Bool` (transient local) | wmx-r2 | wait for both before streaming |
 
 Frames: `world_manipulator` is the planning frame (`Link0` at (-0.03, 0.275, 0.05), yaw -90 deg); `Link6` is Servo's `ee_frame`; table top at z about 0.043 in sim.
