@@ -47,7 +47,8 @@ extend-exclude = ["movensys_imitation_ros"]   # the ROS package is linted with a
 select = ["E", "F", "I", "W", "B", "UP"]
 
 [tool.pytest.ini_options]
-testpaths = ["movensys_imitation/tests"]
+testpaths = ["movensys_imitation/tests", "movensys_imitation_ros/test"]
+pythonpath = ["movensys_imitation_ros"]   # guard_core tests import the ROS package
 # The apt launch_testing pytest plugin (visible through --system-site-packages) is incompatible
 # with pytest 8; it is only needed for colcon test of the ROS package.
 addopts = "-p no:launch_testing -p no:launch_ros"

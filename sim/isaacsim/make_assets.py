@@ -30,7 +30,8 @@ ASSETS = Path(__file__).resolve().parent / "assets"
 PX_PER_M = 4000  # 4 px per mm
 BLOCK_RGB = (20, 40, 110)  # dark blue T (the block material in the scene)
 GOAL_RGB = (40, 160, 70)  # gym-pusht's green goal
-MARK_RGB = (60, 110, 220)  # start marks: light blue, thin lines; the T threshold must not pick them up
+# Start marks: light blue, thin lines; the T colour threshold must not pick them up.
+MARK_RGB = (60, 110, 220)
 
 
 def px(m: float) -> int:

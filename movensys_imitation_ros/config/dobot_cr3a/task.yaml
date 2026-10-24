@@ -1,0 +1,19 @@
+# PushT task constants shared by every node in this package (plan Section 5, v2.5).
+# Numbers come from sim/isaacsim/scene_9a.json and movensys_imitation/tasks/pusht/geometry.py;
+# regenerate both before changing anything here. Loaded by every node (wildcard namespace).
+/**:
+  ros__parameters:
+    task:
+      planning_frame: world_manipulator
+      eef_frame: Link6
+      # Push area (= target sheet), metres in world_manipulator: width along x, depth along y.
+      area_center: [-0.03, -0.05]
+      area_size: [0.60, 0.30]
+      # Table top and pusher tip, for the tip-clearance check when the guard latches its plane.
+      table_z: 0.0431                 # sim (3a collision mesh); real: measure at P4.4
+      link6_to_tip_bottom: 0.22       # Link6 origin to tip bottom along the tool axis
+      tip_clearance_nominal: 0.010    # tip bottom above the table while pushing
+      rates:
+        policy_hz: 10.0
+        guard_hz: 50.0
+        servo_hz: 40.0
