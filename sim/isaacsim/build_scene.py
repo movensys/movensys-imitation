@@ -100,7 +100,8 @@ PUSHT = "/World/pusht"
 SHEET = f"{PUSHT}/target_sheet"
 BLOCK = f"{PUSHT}/t_block"
 LOOKS = f"{PUSHT}/Looks"
-BLOCK_RGB = (20, 40, 110)  # dark blue T, 0-255; the same value as make_assets.py / make_usd_assets.py
+# Dark blue T, 0-255; the same value as make_assets.py / make_usd_assets.py.
+BLOCK_RGB = (20, 40, 110)
 TIP = f"{LINK6}/pusher_tip"
 CAM_LINK = "/World/camera_top_link"
 ASSET_CAM_PRIM = (

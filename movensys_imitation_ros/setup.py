@@ -27,7 +27,7 @@ setup(
     entry_points={
         "console_scripts": [
             # Added in plan Phase 2:
-            # "planar_guard = movensys_imitation_ros.planar_guard:main",
+            "planar_guard = movensys_imitation_ros.planar_guard:main",
             # "episode_recorder = movensys_imitation_ros.episode_recorder:main",
             # "episode_manager = movensys_imitation_ros.episode_manager:main",
             # "pusht_scorer = movensys_imitation_ros.pusht_scorer:main",

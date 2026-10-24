@@ -22,7 +22,7 @@ The plan, milestones and result tables are in [`plan/plan.md`](plan/plan.md).
 ```bash
 cd ~/workspaces/movensys-imitation
 scripts/setup_venv.sh          # uv venv on system Python 3.12, torch cu128, LeRobot 0.6.1
-source env.bash                # ROS_DOMAIN_ID=70, Jazzy, movensys_ws, .venv
+source env.bash                # ROS_DOMAIN_ID=0, Jazzy, movensys_ws, .venv
 scripts/smoke_test_gym.sh      # 500 Diffusion steps on lerobot/pusht + 5 gym-pusht eval episodes
 ```
 
