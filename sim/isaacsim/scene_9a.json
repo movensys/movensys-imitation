@@ -27,7 +27,7 @@
   },
   "table_top_z_world_manipulator": 0.04312009157810337,
   "push_area": {
-    "size_m": 0.45,
+    "size_m": 0.36,
     "center_wm": [
       -0.03,
       -0.08

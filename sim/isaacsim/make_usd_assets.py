@@ -8,7 +8,7 @@ Python, which has ``pxr`` once its app is up:
 
 Writes into ``sim/isaacsim/assets/`` (ASCII-encoded ``.usd`` so diffs stay readable):
 
-* ``t_block.usd``      rigid T: gym-pusht proportions at 40 mm per unit, 30 mm tall, 0.25 kg,
+* ``t_block.usd``      rigid T: gym-pusht proportions at 30 mm per unit, 30 mm tall, 0.15 kg,
                        dark blue (20, 40, 110), friction 0.40/0.35. Default prim ``/t_block``.
 * ``pusher_tip.usd``   20 mm cylinder, collision only (it rides on the link it is parented to).
                        Default prim ``/pusher_tip``.

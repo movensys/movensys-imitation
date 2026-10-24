@@ -13,14 +13,15 @@ def _shoelace(poly):
 
 def test_block_polygon_area_and_extent():
     poly = g.block_polygon_local()
-    assert _shoelace(poly) == pytest.approx(0.16 * 0.04 + 0.04 * 0.12)
-    assert poly[:, 0].min() == pytest.approx(-0.08) and poly[:, 0].max() == pytest.approx(0.08)
-    assert poly[:, 1].min() == pytest.approx(-0.12) and poly[:, 1].max() == pytest.approx(0.04)
+    u = g.UNIT
+    assert _shoelace(poly) == pytest.approx(4 * u * u + 3 * u * u)
+    assert poly[:, 0].min() == pytest.approx(-2 * u) and poly[:, 0].max() == pytest.approx(2 * u)
+    assert poly[:, 1].min() == pytest.approx(-3 * u) and poly[:, 1].max() == pytest.approx(u)
 
 
 def test_centroid_is_on_the_stem_side():
     c = g.block_centroid_local()
-    assert c[0] == 0.0 and -0.12 < c[1] < 0.0
+    assert c[0] == 0.0 and -3 * g.UNIT < c[1] < 0.0
 
 
 def test_goal_centroid_at_sheet_centre():

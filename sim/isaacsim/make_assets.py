@@ -6,7 +6,7 @@ Run from the project venv (needs Pillow and numpy):
 
 Writes into ``sim/isaacsim/assets/``:
 
-* ``target_sheet.png``   the 0.45 x 0.45 m sheet: goal T outline and 30 start marks, no markers
+* ``target_sheet.png``   the 0.36 x 0.36 m sheet: goal T outline and 30 start marks, no markers
 * ``pusht_sheet.json``   every number the artwork was made from, for ``task.yaml`` and the scorer
 
 The sheet carries no fiducials (plan v2.1): scoring segments the dark blue T in the overhead image,

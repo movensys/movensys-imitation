@@ -56,13 +56,15 @@ default `-0.03 -0.08`, to be fixed after the reach check), `--camera-height` (0.
 * **Sheet frame** = prim `/World/pusht`: origin at the push-area centre on the table top, axes
   parallel to `world_manipulator` (the robot base is on the +y side). Everything PushT-specific is
   expressed here: the block pose topic, the teleport topic, the goal pose and the start marks.
-* **Push area**: 0.45 x 0.45 m. With the default centre the sheet spans `world_manipulator`
-  x -0.255..0.195, y -0.305..0.145; the table edge is at y = -0.35 and the base at y = 0.275.
+* **Push area**: 0.36 x 0.36 m (plan v2.4; 0.45 m until 2026-10-24, which the arm could not reach
+  at either edge). With the default centre the sheet spans `world_manipulator` x -0.21..0.15,
+  y -0.26..0.10; the table edge is at y = -0.35 and the base at y = 0.275. The near and far edges
+  are inside Servo's singularity slow-down zone, so teleop is slower there.
 * **Table top**: z = 0.0431 m in `world_manipulator` (measured from the 3a collision mesh).
 * **Pusher tip**: 20 mm cylinder on the `Link6` +z axis from 0.14 to 0.22 m. The tip bottom is
   0.22 m from the `Link6` origin, so the guard's z setpoint for a tip 10 mm above the table is
   **0.2731 m** (in `scene_9a.json`).
-* **T block**: gym-pusht proportions at 40 mm per unit, 30 mm tall, 0.25 kg, friction 0.40/0.35,
+* **T block**: gym-pusht proportions at 30 mm per unit (v2.4), 30 mm tall, 0.15 kg, friction 0.40/0.35,
   dark blue (20, 40, 110). Its pose origin is the bar-stem junction; yaw 0 puts
   the bar along +x on the +y side. It starts at start-state seed 0.
 * **Camera**: a plain `Camera` prim (`/World/camera_top_link/camera_top`) with the D455 colour

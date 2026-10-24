@@ -19,18 +19,29 @@ import math
 
 import numpy as np
 
-UNIT = 0.040
-"""Metres per gym-pusht unit (plan Section 5: 40 mm so the T segments and pushes reliably)."""
+UNIT = 0.030
+"""Metres per gym-pusht unit (plan Section 5, v2.4).
+
+40 mm from v2.0 to v2.3; 30 mm since 2026-10-24 so the T keeps a workable ratio to the push area,
+which the CR3A's reach caps at about 0.36 m (see :data:`SHEET_SIZE`). A 30 mm stem is still about
+27 px wide in the 1280 x 720 overhead image from 0.7 m.
+"""
 
 BAR = (4 * UNIT, 1 * UNIT)  # (length along x, width along y)
 STEM = (1 * UNIT, 3 * UNIT)
 BLOCK_HEIGHT = 0.030
-BLOCK_MASS = 0.250
+BLOCK_MASS = 0.150  # printed at 30 mm per unit: 150 to 250 g depending on infill
 
-SHEET_SIZE = 0.45
-"""Side of the square target sheet, equal to the push area (plan Section 5)."""
-INNER_SIZE = 0.30
-"""Side of the square in which start positions are sampled."""
+SHEET_SIZE = 0.36
+"""Side of the square target sheet, equal to the push area (plan Section 5, v2.4).
+
+Reduced from 0.45 m on 2026-10-24: with the tool vertical at push height the CR3A reaches the
+table without a Servo singularity slow-down only 0.28 to 0.48 m from its base axis, and at all
+only 0.18 to 0.57 m, so a 0.45 m square does not fit at any centre. At 0.36 m the near and far
+edges lie in Servo's slow-down zone (condition number 17 to 30) but stay reachable.
+"""
+INNER_SIZE = 0.22
+"""Side of the square in which start positions are sampled (about 0.6 x the sheet)."""
 
 GOAL_YAW = math.pi / 4
 """Goal orientation, as in gym-pusht (goal pose (256, 256, pi/4))."""

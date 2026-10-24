@@ -1,13 +1,11 @@
 ## Start Isaac Simulation
 
 
-
 ## Isaac Sim Bridge
 mros ros2 launch movensys_manipulator_moveit_config sim_bridge.launch.py simulator:=isaacsim use_sim_time:=true
 
 ## Start Moveit2
 mros ros2 launch movensys_manipulator_moveit_config moveit.launch.py use_sim_time:=true
-
 
 ## Start Moveit Servo
 mros ros2 launch movensys_manipulator_moveit_config quest_servo_teleop.launch.py use_sim_time:=true
