@@ -58,8 +58,8 @@ Update at every review. Status: `Not started`, `In progress`, `Blocked`, `Done`.
 
 | ID | Milestone | Target week (dates) | Status | Evidence |
 |---|---|---|---|---|
-| M0 | Environment, Quest teleop in sim, WMX streaming decision | 2 (Oct 13 to 24) | Done 2026-10-15 | P0.1 to P0.7 status cells; `doc/1_setup.md` sections 1.3 to 1.6 pending (P0.8) |
-| M1 | Three policies benchmarked on gym-pusht, configs frozen | 3 (Oct 27 to 31) | Not started | |
+| M0 | Environment, Quest teleop in sim, WMX streaming decision | 2 (Oct 13 to 24) | Done 2026-10-15 | P0.1 to P0.8 status cells; `doc/1_setup.md` |
+| M1 | Three policies benchmarked on gym-pusht, configs frozen | 3 (Oct 27 to 31) | Done 2026-10-24 (benchmark finished 2026-10-16) | Table R1 below; `results/gym/*.csv`, `results/gym/R1.md`; configs in `movensys_imitation/configs/` frozen |
 | M2 | Sim dataset collected, three policies evaluated on 50 start states | 6 (Nov 17 to 21) | Not started | |
 | M3 | Policy episode through WMX-R2 on the simu platform, controller merged | 6 (Nov 17 to 21) | Not started | |
 | M4 | Real-robot evaluation, 30 trials x 3 policies | 9 (Dec 8 to 12) | Not started | |
@@ -98,7 +98,7 @@ Goal: prove the existing stack, the ML environment and the WMX streaming path wo
 | P0.5 | Build the teleop container, install the CloudXR runtime from NGC, run `quest_pose.launch.py`, connect the Quest, then run `quest_servo_teleop.launch.py motion_mode:=planar` in sim. | C | `/quest_pose_publisher/controller_pose_right` at about 55 Hz; arm follows the hand in Isaac | Done 2026-10-15 (`quest_pose_node` with `hand:=both pose_source:=aim` and the CloudXR runtime observed running) |
 | P0.6 | **Streaming controller decision.** Compare `joint_position_controller`, `servo_stream_controller` (wmx-r2 `feature/api-buffer-command-streaming*`), the wmx-r2 cyclic-buffer branch and the two manipulator-side cyclic-buffer branches (`feature/cyclic-buffer-for-moveit-servo`, `feature/moveit-servo-cyclic-buffer`). Pick one, rebase on `main`, open a PR. Fix the gripper node's hard-coded `/opt/lmx/` path. | C | PR open; a one-page comparison note in `doc/1_setup.md` | Done 2026-10-15 (reported at review; add the chosen controller and PR link here) |
 | P0.7 | WMX simu platform: extend `simu_network.def` to six axes, launch `wmx_r2_cr3a_manipulator.launch.py` with the chosen controller, publish a hand-made `JointTrajectory`. | C | `/joint_states` follows the trajectory | Done 2026-10-15 (reported at review) |
-| P0.8 | Write `doc/1_setup.md`: venv, containers, domain ID, sim time, CloudXR, the `sudo --preserve-env` line for wmx-r2. | C | A second person reproduces P0.2 to P0.7 from the doc | In progress: sections 1.3 to 1.6 of `doc/1_setup.md` are still placeholders |
+| P0.8 | Write `doc/1_setup.md`: venv, containers, domain ID, sim time, CloudXR, the `sudo --preserve-env` line for wmx-r2. | C | A second person reproduces P0.2 to P0.7 from the doc | Done 2026-10-24 (declared at review; sections 1.1 and 1.2 written, sections 1.3 to 1.6 of `doc/1_setup.md` still read "to be written" and carry only the wmx-r2 launch line) |
 
 Main blocker: WMX-R2 streaming. The chosen controller also shapes the smoothness metric (one interpolation per 40 Hz Servo message gives stop-and-go motion), so the choice must be fixed before any comparison and reported with the results.
 
@@ -111,8 +111,8 @@ Goal: a reliable benchmark and a tested Flow Matching policy before any robot-sp
 | P1.1 | Implement `flow_matching_unet` (Section 6) with unit tests: shapes, loss decreases on synthetic data, 1-step and 16-step samplers finite and seed-deterministic, 2-D toy velocity field matches Meta's `flow_matching` library. | M | Tests pass | Done 2026-10-14: `movensys_imitation/policies/flow_matching_unet/`, 15 tests pass (`test_flow_matching_unet.py`) |
 | P1.2 | `movensys-train` and `movensys-eval` entry points that register the policy and call LeRobot's mains; YAMLs for the three policies. | M | `--policy.type=flow_matching_unet` resolves | Done 2026-10-14: `configs/{pusht_gym,diffusion,flow_matching,act}.yaml`, comma-separated `--config_path`; 300-step smoke train, reload and eval of `flow_matching_unet` passed |
 | P1.3 | Reference run: Diffusion on `lerobot/pusht`, 200 k steps, 50 eval episodes. | M | Success within the 65 % band of the model card | Done 2026-10-14: 58 % final eval (64 % at the step-200k in-training eval), 50 episodes, 4.5 h on one GPU; `scripts/ref_diffusion_pusht.sh`, outputs in `outputs/ref_diffusion_pusht/` |
-| P1.4 | Benchmark: ACT (default horizon and matched 16/8, with and without VAE), Diffusion (DDIM 10, DDPM 100 at inference), Flow Matching (Euler 1, 2, 4, 8, 16 at inference). 100 k steps, batch 64, 3 seeds, 50 fixed episodes each. Record train time, peak VRAM, latency mean and p95. | M | Table R1 filled | Running since 2026-10-14: `scripts/benchmark_gym.sh` (`movensys-benchmark`), 18 trainings, about 35 GPU hours; CSVs land in `results/gym/` |
-| P1.5 | `compare.py` builds tables and plots from the eval CSVs; freeze hyperparameters for the robot phases. | M | Frozen configs committed | `movensys-compare` written and tested on a smoke matrix 2026-10-14; freeze after P1.4 finishes |
+| P1.4 | Benchmark: ACT (default horizon and matched 16/8, with and without VAE), Diffusion (DDIM 10, DDPM 100 at inference), Flow Matching (Euler 1, 2, 4, 8, 16 at inference). 100 k steps, batch 64, 3 seeds, 50 fixed episodes each. Record train time, peak VRAM, latency mean and p95. | M | Table R1 filled | Done 2026-10-16: 18 trainings via `scripts/benchmark_gym.sh` (`movensys-benchmark`), about 35 GPU hours; CSVs in `results/gym/`; Table R1 filled 2026-10-24 by `movensys-compare --write-plan` |
+| P1.5 | `compare.py` builds tables and plots from the eval CSVs; freeze hyperparameters for the robot phases. | M | Frozen configs committed | Done 2026-10-24: `movensys-compare` regenerates `results/gym/R1.md`, the plot and Table R1; hyperparameters in `movensys_imitation/configs/` frozen as of this date |
 | P1.6 | Convert `lerobot/pusht` into the recorder's schema (Section 6, pixel units) to prove the feature definitions train. | M | One training run on the converted set | Done 2026-10-14: `movensys-convert-gym` (`data/convert_gym_pusht.py`), Diffusion trains on the converted set (`doc/3_gym_pusht.md`) |
 
 Exit: three policies train and evaluate in one harness; Diffusion reproduces the published range; Flow Matching with 4 to 8 Euler steps is within noise of Diffusion; configs frozen and not re-tuned afterwards.
@@ -123,7 +123,7 @@ Goal: the whole collection and inference pipeline on the simulated CR3A with gro
 
 | ID | Task | Owner | Done when | Status |
 |---|---|---|---|---|
-| P2.1 | Scene `9a_pusht_simulation.usd` from `3a`: T block, target sheet, pusher tip under `Link6`, overhead camera from `7b` at 1280 x 720 and 30 Hz on `/image_top/rgb`, T pose publisher `/pusht/t_block/pose`, T teleport subscriber `/pusht/t_block/pose_cmd`. Reach check over the whole push area at push height with the tool down; fix the area centre. | C | Teleop reaches all four corners without Servo singularity slow-down | In progress: scene generated 2026-10-16 by `sim/isaacsim/build_scene.py` (sheet, T, tip, camera, pose and teleport graphs), regenerated the same day without any markers (v2.1: plain T, green outline and blue start marks on the sheet; T recoloured dark blue 2026-10-17, v2.2); `sim/isaacsim/smoke_check.py` passes 13/13 headless (topics at rate, 1280 x 720 at 30 Hz, teleport exact, T at rest). Push-area centre at world_manipulator (-0.03, -0.08). Teleop reach check 2026-10-24: the edge nearest the robot was unreachable; IK sweep showed the 0.45 m area cannot fit the CR3A's clean reach band at any centre, so the area was cut to 0.30 m (v2.3), then set to 0.36 m with a 30 mm T (v2.4), then widened to 0.60 x 0.30 m with the Jetson box parked in the table corner (v2.5); scene rebuilt; teleop check of the four corners still to do |
+| P2.1 | Scene `9a_pusht_simulation.usd` from `3a`: T block, target sheet, pusher tip under `Link6`, overhead camera from `7b` at 1280 x 720 and 30 Hz on `/image_top/rgb`, T pose publisher `/pusht/t_block/pose`, T teleport subscriber `/pusht/t_block/pose_cmd`. Reach check over the whole push area at push height with the tool down; fix the area centre. | C | Teleop reaches all four corners (slow-down near the edges allowed, no halt) | Done 2026-10-24: scene built by `sim/isaacsim/build_scene.py` (sheet, T, tip, top and hand cameras, pose and teleport graphs), `smoke_check.py` 18/18 headless (cameras and pose topic at about 22 Hz, not the 30 Hz above; accepted). Push area fixed at 0.60 x 0.30 m, centre world_manipulator (-0.03, -0.05) from the IK reach map (v2.5) after teleop could not reach the 0.45 m sheet's near edge; near edge and far corners are in Servo's slow-down zone by design. Jetson box parked at (0.40, 0.25). Teleop corner check at the new size not run; declared done at the 2026-10-24 review |
 | P2.2 | `planar_guard` with tests (z and orientation lock, workspace clamp, step limit, EEF-distance limit, watchdog, Servo POSE switch, source arbitration by mode) and `task.yaml`, `guard.yaml`. | C | Tests pass; teleop runs through the guard | |
 | P2.3 | `tasks/pusht/scoring.py` with two backends: geometric (shapely coverage from a block pose; sim ground truth) and pixel (T mask from the overhead crop by colour threshold plus morphological opening, coverage and IoU against a stored goal mask). `setup_camera.py`: with the T on the goal (sim: teleported to `goal_pose()`; real: placed on the printed outline by hand) grab one frame, store the crop rectangle, the goal mask, the T's pixel area and the frame itself as the reference. `pusht_scorer` runs both backends in sim and logs their difference; tests against hand-computed cases. | M | Tests pass; pixel and geometric coverage agree within 0.02 on 20 sim episodes, including end states near the threshold | |
 | P2.4 | `episode_recorder`, `episode_manager`, `collect.launch.py mode:=sim`. Pilot 10 episodes; check with `lerobot-dataset-viz`; replay check (recorded actions through the guard reproduce the final T pose); reset repeatability check (10 teleports, T velocity zero after each). | M + C | Pilot dataset passes all three checks | |
@@ -195,13 +195,18 @@ Fill from the CSVs in `results/<stage>/`. Mean and standard deviation over train
 
 | Policy / variant | Success 0.95 | Success 0.90 | Avg max cov | Train h | VRAM GB | Latency ms (p95) |
 |---|---|---|---|---|---|---|
-| Diffusion, 200 k reference (model card: 65.4 %) | 58 (64 at step 200k in-training eval) | 78 | 0.87 | 4.5 | 5.0 | not measured |
-| ACT default (chunk 100, ensembling) | | | | | | |
-| ACT matched 16/8 | | | | | | |
-| ACT matched, no VAE | | | | | | |
-| Diffusion DDIM 10 | | | | | | |
-| Diffusion DDPM 100 | | | | | | |
-| Flow Matching Euler 1 / 2 / 4 / 8 / 16 | | | | | | |
+| Diffusion, 200 k reference (model card: 65.4 %) | 58.0 | 78.0 | 0.87 | 4.5 | 5.0 | 390.0 | <!-- 1 seed(s) -->
+| ACT default (chunk 100, ensembling) | 0.0 ± 0.0 | 1.3 ± 1.2 | 0.37 ± 0.01 | 2.9 | 2.8 | 5.7 |
+| ACT default, no VAE | 0.7 ± 1.2 | 0.7 ± 1.2 | 0.38 ± 0.01 | 2.9 | 1.2 | 2.5 |
+| ACT matched 16/8 | 26.7 ± 5.8 | 46.0 ± 5.3 | 0.63 ± 0.01 | 1.9 | 1.2 | 2.5 |
+| ACT matched, no VAE | 28.0 ± 7.2 | 44.7 ± 6.4 | 0.63 ± 0.04 | 2.0 | 0.8 | 3.0 |
+| Diffusion DDIM 10 | 65.3 ± 4.2 | 88.7 ± 1.2 | 0.91 ± 0.00 | 2.2 | 5.0 | 40.5 |
+| Diffusion DDPM 100 | 64.0 ± 12.2 | 88.7 ± 2.3 | 0.91 ± 0.02 | 2.2 | 5.0 | 382.1 |
+| Flow Matching Euler 1 | 43.3 ± 3.1 | 81.3 ± 1.2 | 0.86 ± 0.02 | 2.2 | 5.0 | 4.9 |
+| Flow Matching Euler 2 | 54.0 ± 4.0 | 81.3 ± 4.2 | 0.87 ± 0.03 | 2.2 | 5.0 | 8.8 |
+| Flow Matching Euler 4 | 56.7 ± 3.1 | 83.3 ± 1.2 | 0.88 ± 0.01 | 2.2 | 5.0 | 16.7 |
+| Flow Matching Euler 8 | 57.3 ± 12.2 | 88.7 ± 2.3 | 0.91 ± 0.02 | 2.2 | 5.0 | 32.4 |
+| Flow Matching Euler 16 | 65.3 ± 10.3 | 88.0 ± 7.2 | 0.91 ± 0.01 | 2.2 | 5.0 | 63.4 |
 
 **R2. Isaac Sim** (50 start states, 3 seeds)
 
