@@ -97,6 +97,13 @@ class Grabber(Node):
             rclpy.spin_once(self, timeout_sec=0.05)
 
     def teleport(self, pose, settle: float) -> None:
+        # A publish before Isaac's subscriber has discovered this publisher is dropped (the first
+        # teleport of a fresh node, 2026-10-28), so wait for the match first.
+        t0 = time.monotonic()
+        while self.cmd.get_subscription_count() == 0 and time.monotonic() - t0 < 5.0:
+            self.spin_for(0.1)
+        if self.cmd.get_subscription_count() == 0:
+            self.get_logger().warning("no subscriber on /pusht/t_block/pose_cmd; is the scene playing?")
         msg = pose_msg(pose)
         for _ in range(5):
             self.cmd.publish(msg)

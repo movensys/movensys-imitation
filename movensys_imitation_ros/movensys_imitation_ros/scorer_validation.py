@@ -75,12 +75,18 @@ def main(argv=None) -> int:
     node = Grabber(args.image_topic, "/image_top/camera_info", args.pose_topic)
     try:
         for idx, (kind, target) in enumerate(poses):
-            node.teleport(target, args.settle)
+            for attempt in range(3):
+                node.teleport(target, args.settle)
+                if node.pose is None:
+                    raise RuntimeError(f"no pose on {args.pose_topic}")
+                d, dyaw = pose_error(node.pose, target)
+                if d < 0.002 and dyaw < math.radians(1):
+                    break
+                print(f"{idx:2d} {kind:4s} teleport missed by {d * 1000:.1f} mm, retrying")
+            else:
+                raise RuntimeError(f"pose {idx} not reached: {d * 1000:.1f} mm off after 3 tries")
             frame, _ = node.fresh_frame()
-            if node.pose is None:
-                raise RuntimeError(f"no pose on {args.pose_topic}")
             measured = pose_to_tuple(node.pose)
-            d, dyaw = pose_error(node.pose, target)
             pix = scorer.score(frame)
             geo = sc.geometric_score(measured)
             diff = pix.coverage - geo.coverage if pix.valid else math.nan
