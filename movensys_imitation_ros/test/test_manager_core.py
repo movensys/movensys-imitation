@@ -36,6 +36,18 @@ def test_choose_home_every_collection_seed_has_a_clear_candidate():
         assert clearance >= 0.04
 
 
+def test_choose_home_converts_candidates_to_the_sheet_frame():
+    pose = (0.0, 0.0, 0.0)  # T on the sheet origin
+    origin = (-0.03, -0.05)  # sheet origin in the planning frame
+    on_the_t = (-0.03, -0.05)  # planning-frame point that is the sheet origin
+    far = (0.25, 0.10)
+    home, clearance = mc.choose_home((on_the_t, far), pose, 0.04, origin)
+    assert home == far
+    assert clearance == pytest.approx(mc.home_clearance((0.28, 0.15), pose))
+    with pytest.raises(ValueError):
+        mc.choose_home((on_the_t,), pose, 0.04, origin)
+
+
 def test_choose_home_raises_when_blocked():
     pose = (0.0, 0.0, 0.0)
     with pytest.raises(ValueError, match="no home candidate"):

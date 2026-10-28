@@ -180,10 +180,16 @@ crop resized to 256 x 256 (`observation.images.top`, the scorer's calibration cr
 image and the pixel scorer share one camera setup), `observation.state` (Link6 x, y from TF, the
 same source as the guard), `action` (the guard's `/pusht/target_guarded` at the tick),
 `observation.joints`, `block_pose` (NaN on the real robot), `coverage` and `iou` (scorer fields
-0 and 1). Timestamps are frame index / fps, so the recorder ticks on the node clock (`use_sim_time`
-in sim) and keeps a timing verdict per episode: a tick later than 0.1 s + `tick_tolerance` counts
-as missed, an image older than `max_image_age` at the tick as stale; either makes `timing_ok`
-false. Episode metadata the LeRobot tables cannot hold (seed, start pose, home point, operator,
+0 and 1). `observation.state` and `action` are stored in the sheet frame (planning frame minus
+`task.area_center`), the frame of `block_pose`, the goal and the start marks, so the dataset
+does not depend on where the sheet sits in front of the robot; the offset is in the sidecar as
+`sheet_origin_wm` and the replay check adds it back. Timestamps are frame index / fps, so the
+recorder ticks on the node clock (`use_sim_time` in sim) and keeps a timing verdict per
+episode: a tick later than 0.1 s + `tick_tolerance` counts as missed, an image that arrived more
+than `max_image_age` before the tick as stale (arrival on the node clock, not the header stamp:
+Isaac's camera stamps restart independently of `/clock`); either makes `timing_ok` false. The
+dataset is finalized after every episode, so it is readable mid-session and a crash loses at
+most the episode being recorded. Episode metadata the LeRobot tables cannot hold (seed, start pose, home point, operator,
 stop reason, end score, success, time to success, timing, versions) goes to
 `<root>/meta/movensys_episodes.jsonl`, one line per saved episode (`recorder_core.read_sidecar`).
 The dataset is resumed if `<root>/meta/info.json` exists, so sessions append.

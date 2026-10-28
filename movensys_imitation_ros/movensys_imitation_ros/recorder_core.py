@@ -39,7 +39,10 @@ class RecorderConfig:
     task: str = TASK
     joint_names: tuple[str, ...] = JOINT_NAMES
     max_image_age: float = 0.15
-    """Seconds between the tick and the image stamp beyond which the frame counts as stale."""
+    """Seconds between the tick and the image's arrival beyond which the frame counts as stale."""
+    sheet_origin: tuple[float, float] = (0.0, 0.0)
+    """Push-area centre in the planning frame. ``observation.state`` and ``action`` are stored
+    relative to it, i.e. in the sheet frame the T pose, the goal and the start marks use."""
     tick_tolerance: float = 0.02
     """Seconds of slack on the 1 / fps tick interval before a tick counts as missed."""
     success_threshold: float = sc.SUCCESS_THRESHOLD
@@ -47,7 +50,7 @@ class RecorderConfig:
 
 @dataclass
 class Sample:
-    """What the node has at one tick; ``t`` and ``image_t`` are seconds on the same clock."""
+    """What the node has at one tick; ``t`` and ``image_t`` (arrival) are on the same clock."""
 
     t: float
     image: np.ndarray | None = None  # full overhead frame, RGB uint8 (H, W, 3)
@@ -82,10 +85,13 @@ def build_frame(s: Sample, cal: sc.Calibration, cfg: RecorderConfig) -> dict:
     cal.check_frame(s.image)
     image = resize_crop(cal.apply_crop(s.image), cfg.image_size)
     block = s.block_pose if s.block_pose is not None else (math.nan, math.nan, math.nan)
+    ox, oy = cfg.sheet_origin
+    state = (s.eef_xy[0] - ox, s.eef_xy[1] - oy)
+    action = (s.action_xy[0] - ox, s.action_xy[1] - oy)
     return {
         "observation.images.top": image,
-        "observation.state": np.asarray(s.eef_xy, dtype=np.float32).reshape(2),
-        "action": np.asarray(s.action_xy, dtype=np.float32).reshape(2),
+        "observation.state": np.asarray(state, dtype=np.float32).reshape(2),
+        "action": np.asarray(action, dtype=np.float32).reshape(2),
         "observation.joints": np.asarray(s.joints, dtype=np.float32).reshape(6),
         "block_pose": np.asarray(block, dtype=np.float32).reshape(3),
         "coverage": np.array([s.coverage], dtype=np.float32),
@@ -227,7 +233,12 @@ class EpisodeStore:
 
     @property
     def next_episode_index(self) -> int:
-        return 0 if self.dataset is None else int(self.dataset.meta.total_episodes)
+        if self.dataset is not None:
+            return int(self.dataset.meta.total_episodes)
+        info = Path(self.cfg.root) / "meta" / "info.json"
+        if info.exists():
+            return int(json.loads(info.read_text()).get("total_episodes", 0))
+        return 0
 
     def save(self, buffer: EpisodeBuffer, meta: dict) -> dict:
         """Write the buffered frames as one episode and the sidecar line; returns the line."""
@@ -244,6 +255,7 @@ class EpisodeStore:
             "repo_id": self.cfg.repo_id,
             "recorded_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
             "fps": self.cfg.fps,
+            "sheet_origin_wm": [float(v) for v in self.cfg.sheet_origin],
             **buffer.timing.to_dict(self.cfg.fps),
             "versions": software_versions(),
             **meta,
@@ -251,6 +263,11 @@ class EpisodeStore:
         self.sidecar.parent.mkdir(parents=True, exist_ok=True)
         with self.sidecar.open("a") as f:
             f.write(json.dumps(line) + "\n")
+        # LeRobot writes the parquet footers only on finalize, so until then the dataset on disk
+        # is unreadable (viewer, replay check) and a crash loses the session. Finalize after
+        # every episode; the next save resumes the dataset (same path as a new session).
+        self.dataset.finalize()
+        self.dataset = None
         return line
 
     def close(self) -> None:

@@ -53,6 +53,13 @@ def test_build_frame_matches_schema():
     assert frame["task"] == cfg.task
 
 
+def test_state_and_action_are_in_the_sheet_frame():
+    cfg = rc.RecorderConfig(sheet_origin=(-0.03, -0.05))
+    frame = rc.build_frame(sample(0.0), calibration(), cfg)
+    assert np.allclose(frame["observation.state"], [0.13, 0.0])
+    assert np.allclose(frame["action"], [0.14, 0.0])
+
+
 def test_block_pose_nan_on_the_real_robot():
     frame = rc.build_frame(sample(0.0, block_pose=None), calibration(), rc.RecorderConfig())
     assert np.all(np.isnan(frame["block_pose"]))
@@ -109,9 +116,14 @@ def test_store_writes_dataset_and_sidecar(tmp_path: Path):
         buf.add(sample(i * 0.1))
     store = rc.EpisodeStore(cfg)
     line = store.save(buf, {"seed": 1000, "operator": "test"})
-    store.close()
     assert line["episode_index"] == 0 and line["n_frames"] == 4 and line["seed"] == 1000
-    assert line["timing_ok"] is True
+    assert line["timing_ok"] is True and line["sheet_origin_wm"] == [0.0, 0.0]
+    # Finalized after the save: readable before the store closes, and the index carries on.
+    from lerobot.datasets.lerobot_dataset import LeRobotDataset
+
+    assert LeRobotDataset(cfg.repo_id, root=cfg.root).meta.total_episodes == 1
+    assert store.next_episode_index == 1
+    store.close()
     lines = rc.read_sidecar(cfg.root)
     assert len(lines) == 1 and lines[0] == json.loads(json.dumps(line))
 

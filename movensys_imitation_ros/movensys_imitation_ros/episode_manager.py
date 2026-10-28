@@ -356,6 +356,7 @@ class EpisodeManager(Driver):
             discard_on_timing_fault=p["discard_on_timing_fault"],
             keep_failures=p["keep_failures"],
         )
+        self.sheet_origin = tuple(float(v) for v in p["task.area_center"])
         self.operator: str = p["operator"]
         self.mode: str = p["mode"]
         self.teleop_source: str = p["teleop_source"]
@@ -399,6 +400,7 @@ class EpisodeManager(Driver):
             "keep_failures": True,
             "lower_settle": 0.5,
             "task.home_candidates": [v for xy in mc.HOME_CANDIDATES for v in xy],
+            "task.area_center": [-0.03, -0.05],
             "task.rates.policy_hz": 10.0,
         }
         return {k: self.declare_parameter(k, v).value for k, v in defaults.items()}
@@ -476,7 +478,9 @@ class EpisodeManager(Driver):
         self.stop_requested = self.discard_requested = False
         cfg = self.cfg
         start_pose = g.sample_start_pose(seed)
-        home, clearance = mc.choose_home(cfg.home_candidates, start_pose, cfg.min_home_clearance)
+        home, clearance = mc.choose_home(
+            cfg.home_candidates, start_pose, cfg.min_home_clearance, self.sheet_origin
+        )
         self.get_logger().info(
             f"episode seed {seed}: T start {tuple(round(v, 3) for v in start_pose)}, "
             f"home {home} (clearance {clearance * 1000:.0f} mm)"

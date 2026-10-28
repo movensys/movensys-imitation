@@ -72,14 +72,16 @@ def load_episodes(repo_id: str, root: Path, wanted: list[int] | None) -> list[di
 
 
 def replay_one(drv: Driver, ep: dict, settle: float) -> dict:
+    ox, oy = ep["origin"]  # the dataset is in the sheet frame, the guard in the planning frame
     drv.set_guard_source("pose")
     drv.lift(True)
-    drv.go_to(ep["first_state"])
+    drv.go_to((float(ep["first_state"][0]) + ox, float(ep["first_state"][1]) + oy))
     d, _ = drv.teleport(ep["first_block"])
     drv.lift(False)
     time.sleep(settle)
     t0 = drv.now() + 0.5
-    path = mc.path_from_actions(ep["actions"], t0, ep["fps"])
+    actions = [(float(a[0]) + ox, float(a[1]) + oy) for a in ep["actions"]]
+    path = mc.path_from_actions(actions, t0, ep["fps"])
     drv.publish_path(path)
     duration = len(path) / ep["fps"] + 0.5
     time.sleep(duration + 1.0)
@@ -109,13 +111,21 @@ def main(argv=None) -> int:
     ap.add_argument("--tol-pos", type=float, default=0.010)
     ap.add_argument("--tol-yaw-deg", type=float, default=5.0)
     ap.add_argument("--settle", type=float, default=1.0)
+    ap.add_argument(
+        "--area-center", type=float, nargs=2, default=(-0.03, -0.05),
+        help="sheet origin in the planning frame when the sidecar does not record it",
+    )
     args = ap.parse_args(argv)
 
     episodes = load_episodes(args.repo_id, args.root, args.episodes)
     if not episodes:
         print("no episodes found", file=sys.stderr)
         return 2
-    seeds = {m["episode_index"]: m.get("seed") for m in read_sidecar(args.root)}
+    sidecar = {m["episode_index"]: m for m in read_sidecar(args.root)}
+    seeds = {k: m.get("seed") for k, m in sidecar.items()}
+    for ep in episodes:
+        origin = sidecar.get(ep["episode"], {}).get("sheet_origin_wm", args.area_center)
+        ep["origin"] = (float(origin[0]), float(origin[1]))
 
     rclpy.init()
     drv = Driver("replay_check")

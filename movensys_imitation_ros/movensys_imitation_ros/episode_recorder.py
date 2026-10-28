@@ -22,6 +22,12 @@ Parameter ``episode_meta`` (JSON string) is merged into the sidecar line at save
 manager sets it before ``~/start`` (seed, operator) and again before ``~/save`` (end score).
 Outputs
     ~/state     std_msgs/String   idle | recording:<n> | stopped:<n> | fault:<reason>
+
+Frames: ``observation.state`` and ``action`` are stored in the sheet frame (planning frame
+minus ``task.area_center``), the frame of ``block_pose``, the goal and the start marks; the
+offset is in the sidecar as ``sheet_origin_wm``. Staleness is judged by the image's arrival on
+the node clock, not its header stamp: Isaac's camera stamps restart independently of ``/clock``
+(300 stale frames with a 2067 s "age", 2026-10-28); a skew is logged once per episode.
 """
 
 from __future__ import annotations
@@ -71,6 +77,7 @@ class EpisodeRecorder(Node):
             joint_names=tuple(p["joint_names"]),
             max_image_age=p["max_image_age"],
             tick_tolerance=p["tick_tolerance"],
+            sheet_origin=tuple(float(v) for v in p["task.area_center"]),
         )
         self.planning_frame: str = p["task.planning_frame"]
         self.eef_frame: str = p["task.eef_frame"]
@@ -82,6 +89,7 @@ class EpisodeRecorder(Node):
 
         self.image: Image | None = None
         self.image_rx = -math.inf
+        self.stamp_warned = False
         self.eef_pose: PoseStamped | None = None
         self.action: tuple[float, float] | None = None
         self.action_rx = -math.inf
@@ -140,6 +148,7 @@ class EpisodeRecorder(Node):
             "eef_pose_topic": "/wmx/moveit2/eef_pose",
             "task.planning_frame": "world_manipulator",
             "task.eef_frame": "Link6",
+            "task.area_center": [-0.03, -0.05],
             "episode_meta": "{}",
         }
         return {k: self.declare_parameter(k, v).value for k, v in defaults.items()}
@@ -191,18 +200,23 @@ class EpisodeRecorder(Node):
         return (tf.transform.translation.x, tf.transform.translation.y)
 
     def _sample(self) -> rc.Sample:
-        image = image_t = None
+        image = None
         if self.image is not None:
             image = sc.decode_image(
                 self.image.data, self.image.width, self.image.height, self.image.step,
                 self.image.encoding,
             )
             stamp = Time.from_msg(self.image.header.stamp).nanoseconds * 1e-9
-            image_t = stamp if stamp > 0 else self.image_rx
+            if stamp > 0 and abs(stamp - self.image_rx) > 1.0 and not self.stamp_warned:
+                self.stamp_warned = True
+                self.get_logger().warning(
+                    f"image header stamp is {self.image_rx - stamp:+.1f} s off the node clock; "
+                    "staleness uses the arrival time"
+                )
         return rc.Sample(
             t=self._now(),
             image=image,
-            image_t=image_t if image_t is not None else -math.inf,
+            image_t=self.image_rx,
             eef_xy=self._eef_xy(),
             action_xy=self.action,
             joints=self.joints,

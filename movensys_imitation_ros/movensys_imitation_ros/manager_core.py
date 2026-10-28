@@ -52,12 +52,24 @@ def home_clearance(xy, block_pose) -> float:
     return max(0.0, sc.block_shape(block_pose).distance(Point(xy)) - TIP_RADIUS)
 
 
-def choose_home(candidates, block_pose, min_clearance: float) -> tuple[tuple[float, float], float]:
-    """Pick the candidate farthest from the T; ``ValueError`` if none clears ``min_clearance``."""
+def choose_home(
+    candidates, block_pose, min_clearance: float, origin=(0.0, 0.0)
+) -> tuple[tuple[float, float], float]:
+    """Pick the candidate farthest from the T; ``ValueError`` if none clears ``min_clearance``.
+
+    Candidates are in the planning frame, the T pose in the sheet frame whose origin is
+    ``origin`` (the push-area centre) in the planning frame. The chosen home is returned in
+    the planning frame.
+    """
     if not candidates:
         raise ValueError("no home candidates")
-    best = max(candidates, key=lambda xy: home_clearance(xy, block_pose))
-    clearance = home_clearance(best, block_pose)
+    ox, oy = origin
+
+    def clearance_of(xy):
+        return home_clearance((xy[0] - ox, xy[1] - oy), block_pose)
+
+    best = max(candidates, key=clearance_of)
+    clearance = clearance_of(best)
     if clearance < min_clearance:
         raise ValueError(
             f"no home candidate clears the T at {tuple(round(v, 3) for v in block_pose)} by "
