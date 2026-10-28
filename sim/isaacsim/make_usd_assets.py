@@ -73,6 +73,16 @@ def set_xform(prim, translate=(0, 0, 0), orient: Gf.Quatf | None = None, scale=(
     xf.AddScaleOp(UsdGeom.XformOp.PrecisionFloat).Set(Gf.Vec3f(*scale))
 
 
+def srgb_to_linear(rgb8) -> tuple[float, float, float]:
+    """8-bit sRGB to linear floats: UsdPreviewSurface's diffuseColor is linear, so an sRGB value
+    written as c / 255 renders too light (the (20, 40, 110) T came out about (78, 110, 175))."""
+    out = []
+    for c in rgb8:
+        c = c / 255
+        out.append(c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4)
+    return tuple(out)
+
+
 def color_material(stage, path: str, rgb) -> UsdShade.Material:
     mat = UsdShade.Material.Define(stage, path)
     surf = UsdShade.Shader.Define(stage, f"{path}/surface")
@@ -127,7 +137,7 @@ def make_t_block(path: Path) -> None:
     prim.SetCustomDataByKey("pusht:rgb", Gf.Vec3i(*BLOCK_RGB))
 
     UsdGeom.Scope.Define(stage, "/t_block/Looks")
-    vis = color_material(stage, "/t_block/Looks/block_material", [c / 255 for c in BLOCK_RGB])
+    vis = color_material(stage, "/t_block/Looks/block_material", srgb_to_linear(BLOCK_RGB))
     phys = physics_material(stage, "/t_block/Looks/block_physics", 0.40, 0.35)
 
     h = g.BLOCK_HEIGHT

@@ -1,0 +1,26 @@
+# pusht_scorer and setup_camera parameters (plan P2.3). The crop, the goal mask and the refined
+# colour threshold live in config/dobot_cr3a/calibration/<mode>/ (written by setup_camera).
+pusht_scorer:
+  ros__parameters:
+    mode: sim                  # sim | real: picks the calibration directory and the primary backend
+    primary: auto              # auto (sim: geometric, real: pixel) | geometric | pixel
+    image_topic: /image_top/rgb
+    pose_topic: /pusht/t_block/pose
+    calibration_dir: ""        # empty: <share>/config/dobot_cr3a/calibration/<mode>
+    rate_hz: 10.0
+    publish_mask: true         # /pusht/t_mask (mono8, crop size) for inspection
+    image_stale: 0.5           # s; older frames give NaN pixel scores
+    pose_stale: 0.5            # s; older poses give NaN geometric scores
+    log_period: 2.0            # s between pixel-versus-geometric log lines
+    segmentation:
+      open_px: 5               # opening kernel diameter; removes the 1 mm marks and speckle
+      area_tolerance: 0.15     # mask area within this of the reference counts as unoccluded
+    # Colour range setup_camera uses to find the T in the calibration frame (OpenCV HSV:
+    # H 0..179, S 0..255, V 0..255). It is then refined from the T's own pixels with the margins.
+    initial_threshold:
+      hue: [95, 135]
+      sat_min: 60
+      val: [20, 230]
+    refine:
+      hue_margin: 8
+      sv_margin: 40

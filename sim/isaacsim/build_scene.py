@@ -189,6 +189,16 @@ def texture_material(stage, path: str, texture: str, cutout: bool = False) -> Us
     return mat
 
 
+def srgb_to_linear(rgb8) -> tuple[float, float, float]:
+    """8-bit sRGB to linear floats: UsdPreviewSurface's diffuseColor is linear, so an sRGB value
+    written as c / 255 renders too light (the (20, 40, 110) T came out about (78, 110, 175))."""
+    out = []
+    for c in rgb8:
+        c = c / 255
+        out.append(c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4)
+    return tuple(out)
+
+
 def color_material(stage, path: str, rgb) -> UsdShade.Material:
     mat = UsdShade.Material.Define(stage, path)
     surf = UsdShade.Shader.Define(stage, f"{path}/surface")
@@ -328,7 +338,7 @@ x0, y0, yaw0 = g.sample_start_pose(0)
 set_xform(bprim, (x0, y0, 0.001), Gf.Quatf(*g.yaw_to_quat_wxyz(yaw0)))
 UsdPhysics.RigidBodyAPI.Apply(bprim)
 UsdPhysics.MassAPI.Apply(bprim).CreateMassAttr(g.BLOCK_MASS)
-block_vis = color_material(stage, f"{LOOKS}/block_material", tuple(c / 255 for c in BLOCK_RGB))
+block_vis = color_material(stage, f"{LOOKS}/block_material", srgb_to_linear(BLOCK_RGB))
 block_phys = physics_material(stage, f"{LOOKS}/block_physics", 0.40, 0.35)
 h = g.BLOCK_HEIGHT
 for name, size, centre in (

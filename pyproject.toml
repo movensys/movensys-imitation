@@ -15,6 +15,7 @@ authors = [{ name = "Mohsin Ali (MVSK)", email = "mali@movensys.com" }]
 dependencies = [
     "lerobot[pusht,diffusers-dep,dataset,training]==0.6.1",
     "shapely>=2.0",
+    "opencv-python-headless>=4.10",   # P2.3 pixel scorer (HSV, opening, components)
     "pyyaml>=6",
     "pygame>=2.5",
     # Shadow apt packages that are built against numpy 1.26 and would otherwise leak in through
