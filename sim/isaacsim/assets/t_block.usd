@@ -39,7 +39,7 @@ def Xform "t_block" (
             def Shader "surface"
             {
                 uniform token info:id = "UsdPreviewSurface"
-                color3f inputs:diffuseColor = (0.078431375, 0.15686275, 0.43137255)
+                color3f inputs:diffuseColor = (0.00699541, 0.02121901, 0.15592647)
                 float inputs:metallic = 0
                 float inputs:roughness = 0.7
                 token outputs:surface

@@ -47,7 +47,7 @@
       0.2,
       0.07
     ],
-    "note": "moved from the 3a default (0.36, 0.18); the manipulator URDF still has the old place"
+    "note": "moved from the 3a default (0.36, 0.18); the manipulator URDF still has it there"
   },
   "block_prim": "/World/pusht/t_block",
   "block_rest_z_in_sheet": 0.0,
