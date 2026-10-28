@@ -10,7 +10,12 @@ def test_recorder_features_match_plan_schema():
     assert f["observation.images.top"]["shape"] == (256, 256, 3)
     assert f["observation.state"]["shape"] == (2,) and f["action"]["shape"] == (2,)
     assert f["observation.joints"]["shape"] == (6,) and f["block_pose"]["shape"] == (3,)
-    assert f["coverage"]["shape"] == (1,)
+    assert f["coverage"]["shape"] == (1,) and f["iou"]["shape"] == (1,)
+    # Plan Section 5 table, in order; the recorder (P2.4) writes exactly these keys.
+    assert list(f) == [
+        "observation.images.top", "observation.state", "action", "observation.joints",
+        "block_pose", "coverage", "iou",
+    ]
 
 
 def test_convert_frame_units_and_dtypes():
@@ -26,6 +31,7 @@ def test_convert_frame_units_and_dtypes():
     assert frame["observation.state"].dtype == np.float32
     assert np.allclose(frame["observation.state"], [100.0, 200.0])  # pixel units kept
     assert np.isclose(frame["coverage"][0], 0.5 * 0.95)
+    assert frame["iou"].shape == (1,) and frame["iou"][0] == 0.0
     assert frame["task"] == cg.TASK
 
 

@@ -15,9 +15,17 @@ Inputs
 Outputs
     /servo_node/pose_target_cmds, /pusht/target_guarded   geometry_msgs/PoseStamped, 50 Hz
     ~/state                            std_msgs/String          "<state>:<reason>" on change
+    ~/lift_state                       std_msgs/String          down | up | moving (latched)
 Services
     ~/relatch                          std_srvs/Trigger         re-latch z and orientation
+    ~/lift                             std_srvs/SetBool         true: raise the tool by
+                                                                ``lift_height`` above the latched
+                                                                plane (ramped at ``step_limit``
+                                                                per cycle); false: lower it
     /servo_node/switch_command_type    called once with POSE (2)
+
+The lift (P2.4) lets the episode manager clear the T before homing and before a teleport, and
+is the only z motion the guard ever commands: x, y are still clamped to the push area.
 """
 
 from __future__ import annotations
@@ -34,10 +42,11 @@ import rclpy
 from rclpy.clock import Clock, ClockType
 from rclpy.node import Node
 from rclpy.parameter import Parameter
+from rclpy.qos import DurabilityPolicy, QoSProfile
 from rclpy.time import Time
 from sensor_msgs.msg import Joy
 from std_msgs.msg import String
-from std_srvs.srv import Trigger
+from std_srvs.srv import SetBool, Trigger
 import tf2_ros
 
 from movensys_imitation_ros.guard_core import (
@@ -68,10 +77,14 @@ class PlanarGuard(Node):
         self.link6_to_tip: float = p["task.link6_to_tip_bottom"]
         self.tip_clearance_nominal: float = p["task.tip_clearance_nominal"]
         self.z_setpoint: float = p["z_setpoint"]
+        self.latch_mode: str = p["latch_mode"]
+        if self.latch_mode not in ("measured", "nominal"):
+            raise ValueError(f"latch_mode must be measured or nominal, got {self.latch_mode!r}")
         self.stick_axes = [int(a) for a in p["stick_axes"]]
         self.require_deadman: bool = p["require_deadman"]
         self.deadman_axis: int = p["deadman_axis"]
         self.deadman_threshold: float = p["deadman_threshold"]
+        self.lift_height: float = p["lift_height"]
 
         config = GuardConfig(
             area_center=tuple(p["task.area_center"]),
@@ -109,11 +122,16 @@ class PlanarGuard(Node):
         self.latched_q: tuple[float, float, float, float] | None = None  # x, y, z, w
         self.last_state = ""
         self.pose_mode_set = False
+        self.lift_goal = 0.0  # 0 or lift_height, metres above the latched plane
+        self.lift_offset = 0.0  # ramped toward lift_goal at step_limit per cycle
+        self.last_lift_state = ""
 
         # ROS entities.
         self.servo_pub = self.create_publisher(PoseStamped, p["servo_pose_topic"], 10)
         self.guarded_pub = self.create_publisher(PoseStamped, "/pusht/target_guarded", 10)
         self.state_pub = self.create_publisher(String, "~/state", 10)
+        latched = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
+        self.lift_pub = self.create_publisher(String, "~/lift_state", latched)
         self.create_subscription(Joy, p["joy_topic"], self._on_joy, 10)
         self.create_subscription(PoseStamped, "/pusht/target_raw", self._on_target_raw, 10)
         self.create_subscription(Path, "/pusht/waypoints", self._on_waypoints, 10)
@@ -126,6 +144,7 @@ class PlanarGuard(Node):
             self.tf_buffer = tf2_ros.Buffer()
             self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
         self.create_service(Trigger, "~/relatch", self._on_relatch)
+        self.create_service(SetBool, "~/lift", self._on_lift)
         self.switch_client = self.create_client(ServoCommandType, p["servo_switch_service"])
         self.switch_timer = self.create_timer(1.0, self._ensure_pose_mode)
 
@@ -136,8 +155,9 @@ class PlanarGuard(Node):
             f"planar_guard: source={source} eef={self.eef_source} area centre "
             f"{config.area_center} size {config.area_size} step {config.step_limit} m "
             f"lead {config.eef_distance_limit} m max_speed {config.max_speed} m/s "
-            f"deadman={'on' if self.require_deadman else 'OFF'}"
+            f"lift {self.lift_height} m deadman={'on' if self.require_deadman else 'OFF'}"
         )
+        self._publish_lift_state()
 
     # --- parameters -------------------------------------------------------------------------
 
@@ -153,6 +173,7 @@ class PlanarGuard(Node):
             "task.tip_clearance_nominal": 0.010,
             "source": "stick",
             "z_setpoint": -1.0,
+            "latch_mode": "measured",
             "eef_source": "tf",
             "eef_pose_topic": "/wmx/moveit2/eef_pose",
             "joy_topic": "/quest_pose_publisher/joy_right",
@@ -166,6 +187,7 @@ class PlanarGuard(Node):
             "require_deadman": True,
             "deadman_axis": 3,
             "deadman_threshold": 0.6,
+            "lift_height": 0.08,
             "step_limit": d.step_limit,
             "eef_distance_limit": d.eef_distance_limit,
             "joy_stale": d.joy_stale,
@@ -190,6 +212,13 @@ class PlanarGuard(Node):
                     )
                 self.core.set_source(prm.value)
                 self.get_logger().info(f"source -> {prm.value}")
+            elif prm.name == "require_deadman":
+                # Runtime switch for replay_check and unattended sim evaluation (P2.9); never
+                # on the real robot.
+                self.require_deadman = bool(prm.value)
+                self.get_logger().warning(
+                    f"require_deadman -> {self.require_deadman} (sim only)"
+                )
         return SetParametersResult(successful=True)
 
     # --- subscriptions ----------------------------------------------------------------------
@@ -244,6 +273,11 @@ class PlanarGuard(Node):
     # --- services -----------------------------------------------------------------------------
 
     def _on_relatch(self, _req, res: Trigger.Response) -> Trigger.Response:
+        if self.lift_goal > 0.0 or abs(self.lift_offset) > 0.0:
+            res.success = False
+            res.message = "refused: the tool is lifted or still ramping to the plane; relatch later"
+            self.get_logger().warning(res.message)
+            return res
         self.latched_z = None
         self.latched_q = None
         self.core.reset()
@@ -251,6 +285,24 @@ class PlanarGuard(Node):
         res.message = "plane will re-latch on the next end-effector pose"
         self.get_logger().info(res.message)
         return res
+
+    def _on_lift(self, req: SetBool.Request, res: SetBool.Response) -> SetBool.Response:
+        self.lift_goal = self.lift_height if req.data else 0.0
+        res.success = True
+        res.message = f"lift goal {self.lift_goal:.3f} m above the latched plane"
+        self.get_logger().info(res.message)
+        return res
+
+    def _publish_lift_state(self) -> None:
+        if self.lift_offset != self.lift_goal:
+            state = "moving"
+        elif self.lift_goal > 0.0:
+            state = "up"
+        else:
+            state = "down"
+        if state != self.last_lift_state:
+            self.last_lift_state = state
+            self.lift_pub.publish(String(data=state))
 
     def _ensure_pose_mode(self) -> None:
         if self.pose_mode_set:
@@ -304,21 +356,35 @@ class PlanarGuard(Node):
 
     def _latch(self) -> None:
         pose = self.eef_pose.pose
-        z = pose.position.z if self.z_setpoint <= 0.0 else self.z_setpoint
+        measured = pose.position.z
+        if self.z_setpoint > 0.0:
+            z, how = self.z_setpoint, "setpoint"
+        elif self.latch_mode == "nominal":
+            z = self.table_z + self.link6_to_tip + self.tip_clearance_nominal
+            how = "nominal"
+        else:
+            z, how = measured, "measured"
         self.latched_z = z
+        # A plane below (or above) the tool is reached through the lift ramp, never in one step:
+        # after a fault the safe stop leaves the tool lifted, and a restarted guard then latched
+        # 100 mm up (2026-10-28). The lift state reads "moving" until the tool is on the plane.
+        self.lift_offset = measured - z
         q = pose.orientation
         self.latched_q = (q.x, q.y, q.z, q.w)
         clearance = z - self.link6_to_tip - self.table_z
         msg = (
-            f"plane latched: z={z:.4f} m ({'measured' if self.z_setpoint <= 0 else 'setpoint'}), "
-            f"tip clearance {clearance * 1000:.1f} mm above the table (nominal "
-            f"{self.tip_clearance_nominal * 1000:.0f}), orientation xyzw=({q.x:.3f}, {q.y:.3f}, "
-            f"{q.z:.3f}, {q.w:.3f})"
+            f"plane latched: z={z:.4f} m ({how}), tip clearance {clearance * 1000:.1f} mm above "
+            f"the table (nominal {self.tip_clearance_nominal * 1000:.0f}), orientation "
+            f"xyzw=({q.x:.3f}, {q.y:.3f}, {q.z:.3f}, {q.w:.3f})"
         )
         if abs(clearance - self.tip_clearance_nominal) > 0.005:
             self.get_logger().warning(msg + " -- outside +-5 mm of nominal; check the height")
         else:
             self.get_logger().info(msg)
+        if abs(self.lift_offset) > 0.001:
+            self.get_logger().warning(
+                f"tool is {self.lift_offset * 1000:+.1f} mm off the plane; ramping it there"
+            )
 
     def _deadman(self) -> bool:
         if not self.require_deadman:
@@ -378,11 +444,13 @@ class PlanarGuard(Node):
                 self.get_logger().info(f"guard {state}")
         if not out.publish or out.target is None or self.latched_z is None:
             return
+        self.lift_offset = self.core.ramp(self.lift_offset, self.lift_goal)
+        self._publish_lift_state()
         msg = PoseStamped()
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.header.frame_id = self.planning_frame
         msg.pose.position.x, msg.pose.position.y = out.target
-        msg.pose.position.z = self.latched_z
+        msg.pose.position.z = self.latched_z + self.lift_offset
         (msg.pose.orientation.x, msg.pose.orientation.y,
          msg.pose.orientation.z, msg.pose.orientation.w) = self.latched_q
         self.servo_pub.publish(msg)

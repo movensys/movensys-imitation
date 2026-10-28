@@ -218,3 +218,18 @@ def test_reset_and_set_source():
     assert g.source == SOURCE_POSE
     with pytest.raises(ValueError):
         g.set_source("hand")
+
+
+# --- lift ramp (P2.4) ------------------------------------------------------------------------
+
+
+def test_ramp_moves_at_most_step_limit_and_lands_exactly():
+    core = make(step_limit=0.005)
+    z = 0.0
+    steps = 0
+    while z != 0.08:
+        z = core.ramp(z, 0.08)
+        steps += 1
+    assert steps == 16  # 0.08 / 0.005
+    assert core.ramp(0.08, 0.0) == pytest.approx(0.075)
+    assert core.ramp(0.003, 0.0) == 0.0
