@@ -1,0 +1,51 @@
+image_size:
+- 1280
+- 720
+crop:
+- 315
+- 45
+- 628
+- 628
+px_per_m: 951.4400113712347
+t_area_px: 5717
+goal_area_px: 5717
+threshold:
+  hue:
+  - 93
+  - 124
+  sat_min: 47
+  val:
+  - 49
+  - 193
+t_hsv_median:
+- 116
+- 146
+- 135
+centre_uv:
+- 313.8595417176841
+- 314.48836802518804
+goal_mask: goal_mask.png
+reference: reference.png
+meta:
+  created: '2026-10-27T09:24:30'
+  mode: sim
+  image_topic: /image_top/rgb
+  frame_id: camera_top_color_optical_frame
+  stamp: '40.216668764'
+  initial_threshold:
+    hue:
+    - 95
+    - 135
+    sat_min: 60
+    val:
+    - 20
+    - 230
+  refine:
+    hue_margin: 8
+    sv_margin: 40
+  camera_info:
+    fx: 634.0862399675711
+    fy: 634.0862399675711
+    cx: 640.0
+    cy: 360.0
+  camera_height_m: 0.7

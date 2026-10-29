@@ -1,0 +1,20 @@
+{
+  "policy": "act_default_novae",
+  "policy_yaml": "act",
+  "variant": "default",
+  "seed": 1,
+  "train_overrides": [
+    "--policy.use_vae=false"
+  ],
+  "eval_overrides": [],
+  "n_eval": 50,
+  "eval_seed": 100000,
+  "train_s": 10614.224039589986,
+  "peak_vram_gb": 1.2,
+  "steps": 100000,
+  "latency_ms_mean": 2.4268751608906314,
+  "latency_ms_p95": 2.4507379974238575,
+  "latency_n": 100,
+  "n_params": 34219842,
+  "device": "NVIDIA GeForce RTX 5090"
+}

@@ -1,0 +1,23 @@
+# Diffusion Policy, Phase 1 fairness settings (plan Section 6 = lerobot/diffusion_pusht model card).
+# LeRobot 0.6.1 defaults differ (horizon 64 / 32, no crop, ImageNet BatchNorm encoder, one
+# encoder per camera); every value below is set explicitly so that diffusion.yaml and
+# flow_matching.yaml diff only in the objective fields.
+policy:
+  type: diffusion
+  n_obs_steps: 2
+  horizon: 16
+  n_action_steps: 8
+  drop_n_last_frames: 7
+  crop_shape: [84, 84]
+  crop_is_random: true
+  pretrained_backbone_weights: null
+  use_group_norm: true
+  use_separate_rgb_encoder_per_camera: false
+  # Objective: DDPM epsilon, 100 train steps. Inference variants are set at eval time:
+  #   --policy.noise_scheduler_type=DDIM --policy.num_inference_steps=10   (R1 "DDIM 10")
+  #   --policy.noise_scheduler_type=DDPM --policy.num_inference_steps=100  (R1 "DDPM 100")
+  noise_scheduler_type: DDPM
+  num_train_timesteps: 100
+  prediction_type: epsilon
+  num_inference_steps: null
+  push_to_hub: false

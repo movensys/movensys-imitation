@@ -1,0 +1,19 @@
+# ACT, Phase 1 settings (plan Section 6). Default variant: chunk 100 with temporal ensembling
+# (LeRobot requires n_action_steps 1 for ensembling). Matched variant and the no-VAE runs are
+# CLI overrides applied by the benchmark:
+#   matched 16 / 8:  --policy.chunk_size=16 --policy.n_action_steps=8 --policy.temporal_ensemble_coeff=null
+#   no VAE:          --policy.use_vae=false
+# Batch 64 departs from LeRobot's ACT default of 8; the learning rate is kept at the default
+# 1e-5 for the first benchmark and may be adjusted once in Phase 1 (recorded in doc/3_gym_pusht.md).
+policy:
+  type: act
+  n_obs_steps: 1
+  chunk_size: 100
+  n_action_steps: 1
+  temporal_ensemble_coeff: 0.01
+  use_vae: true
+  kl_weight: 10.0
+  pretrained_backbone_weights: ResNet18_Weights.IMAGENET1K_V1
+  optimizer_lr: 1.0e-5
+  optimizer_lr_backbone: 1.0e-5
+  push_to_hub: false

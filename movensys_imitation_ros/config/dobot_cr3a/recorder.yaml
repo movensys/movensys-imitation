@@ -1,0 +1,47 @@
+# episode_recorder and episode_manager parameters (plan P2.4). Area, frames and the home
+# candidates come from task.yaml; the image crop from config/dobot_cr3a/calibration/<mode>/.
+episode_recorder:
+  ros__parameters:
+    mode: sim                   # sim | real: picks the calibration directory
+    repo_id: movensys/pusht_cr3a_sim_v1
+    root: datasets/movensys/pusht_cr3a_sim_v1   # relative to the repo (MOVENSYS_IMITATION_ROOT)
+    fps: 10
+    image_size: 256
+    robot_type: dobot_cr3a
+    calibration_dir: ""         # empty: <share>/config/dobot_cr3a/calibration/<mode>
+    joint_names: [joint1, joint2, joint3, joint4, joint5, joint6]
+    # Timing verdict (sidecar timing_ok): the camera runs at about 22 Hz in sim, so an image
+    # up to about 50 ms old is normal; a tick later than 1/fps + tick_tolerance is "missed".
+    max_image_age: 0.15         # s
+    tick_tolerance: 0.02        # s
+    image_topic: /image_top/rgb
+    action_topic: /pusht/target_guarded
+    joint_topic: /joint_states
+    pose_topic: /pusht/t_block/pose
+    score_topic: /pusht/score
+    eef_source: tf              # tf (world_manipulator -> Link6, as the guard) | topic
+    eef_pose_topic: /wmx/moveit2/eef_pose
+
+episode_manager:
+  ros__parameters:
+    mode: sim
+    operator: ""                # set per session: -p operator:=name (sidecar metadata)
+    teleop_source: stick        # guard source while recording: stick (Quest) | pose (runner)
+    seed_start: 1000            # collection seeds are 1000 and up (plan Section 5)
+    n_episodes: 10              # with auto_start; 0 = until ~/abort
+    auto_start: false           # true: after the first ~/start, run n_episodes back to back
+    success_threshold: 0.95
+    max_steps: 300              # frames at fps (30 s), as gym-pusht
+    min_home_clearance: 0.04    # m between the tip edge and the T outline at the home point
+    discard_on_timing_fault: true
+    keep_failures: true         # P2.6 keeps successes only, using the sidecar's success flag
+    lower_settle: 0.5           # s after the tool is down before recording starts
+    scripted_deadman: false     # true: the grip must be held even for the manager's own lift,
+                                # home and lower moves (restored for teleop either way)
+    pose_topic: /pusht/t_block/pose
+    score_topic: /pusht/score
+    service_timeout: 5.0
+    lift_timeout: 5.0
+    home_tolerance: 0.008       # m
+    home_timeout: 20.0          # s; the guard moves at 0.25 m/s at most
+    teleport_settle: 1.5

@@ -1,0 +1,20 @@
+# Flow Matching (flow_matching_unet, ours), Phase 1 fairness settings (plan Section 6).
+# Encoder, UNet, horizon, crop and normalisation are identical to diffusion.yaml.
+policy:
+  type: flow_matching_unet
+  n_obs_steps: 2
+  horizon: 16
+  n_action_steps: 8
+  drop_n_last_frames: 7
+  crop_shape: [84, 84]
+  crop_is_random: true
+  pretrained_backbone_weights: null
+  use_group_norm: true
+  use_separate_rgb_encoder_per_camera: false
+  # Objective: OT path x_t = (1 - t) noise + t a, target a - noise, MSE.
+  fm_time_sampling: uniform
+  fm_time_embed_scale: 100.0
+  # Inference: Euler K steps; the benchmark evaluates K in 1, 2, 4, 8, 16 with --policy.fm_num_steps=K.
+  fm_solver: euler
+  fm_num_steps: 8
+  push_to_hub: false

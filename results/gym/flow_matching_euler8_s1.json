@@ -1,0 +1,20 @@
+{
+  "policy": "flow_matching",
+  "policy_yaml": "flow_matching",
+  "variant": "euler8",
+  "seed": 1,
+  "train_overrides": [],
+  "eval_overrides": [
+    "--policy.fm_num_steps=8"
+  ],
+  "n_eval": 50,
+  "eval_seed": 100000,
+  "train_s": 7983.193841526983,
+  "peak_vram_gb": 5.0,
+  "steps": 100000,
+  "latency_ms_mean": 32.38238908990752,
+  "latency_ms_p95": 32.4234060550225,
+  "latency_n": 100,
+  "n_params": 262709026,
+  "device": "NVIDIA GeForce RTX 5090"
+}

@@ -1,0 +1,59 @@
+# planar_guard parameters (plan P2.2). Area, frames and tip numbers come from task.yaml.
+planar_guard:
+  ros__parameters:
+    # Input source: "stick" (Quest right thumbstick, integrated as a planar velocity) or
+    # "pose" (absolute targets on /pusht/target_raw or a timed path on /pusht/waypoints).
+    # Changeable at runtime: ros2 param set /planar_guard source pose
+    source: stick
+
+    # z and orientation: latched from the measured Link6 pose when the first pose arrives
+    # (park the rod at push height first). Set z_setpoint > 0 to override the latched z;
+    # the sim reference for a tip 10 mm above the table is 0.2731 (scene_9a.json).
+    z_setpoint: -1.0
+    # latch_mode (node default "measured", not set here so the launch can override it):
+    # "measured" latches where the tool is (real robot: park it at push height first);
+    # "nominal" latches at table_z + link6_to_tip_bottom + tip_clearance_nominal and ramps the
+    # tool there. collect.launch.py selects nominal in sim so a restart after a fault (tool
+    # left lifted by the safe stop) does not inherit the lifted height.
+
+    # Measured end-effector pose: "tf" (world_manipulator -> Link6, as the hand teleop does)
+    # or "topic" (/wmx/moveit2/eef_pose from moveit2_api).
+    eef_source: tf
+    eef_pose_topic: /wmx/moveit2/eef_pose
+
+    # Quest controller (quest_pose_publisher, 60 Hz):
+    #   axes = [thumbstick_x, thumbstick_y, trigger_value, squeeze_value]
+    joy_topic: /quest_pose_publisher/joy_right
+    stick_axes: [0, 1]
+    stick_yaw_deg: 0.0          # rotate stick "forward" onto the planning frame; calibrate (P2.5)
+    stick_invert_x: false
+    stick_invert_y: false
+    deadzone: 0.15
+    expo: 2.0
+    max_speed: 0.12             # m/s at full deflection; the step limit caps at 0.25 m/s
+
+    # Dead-man: analog grip (axes[3]) above the threshold. require_deadman false only for
+    # unattended sim evaluation (P2.9); never on the real robot.
+    require_deadman: true
+    deadman_axis: 3
+    deadman_threshold: 0.6
+
+    # Lift (P2.4): ~/lift true raises the tool this far above the latched plane, ramped at
+    # step_limit per cycle (0.08 m takes 0.32 s), so the manager can home and teleport the T
+    # without touching it. The T is 30 mm tall and the tip sits 10 mm above the table.
+    lift_height: 0.08
+
+    # Plan Section 5 limits.
+    step_limit: 0.005           # m per 50 Hz cycle
+    eef_distance_limit: 0.030   # m; the target never leads the measured EEF by more
+
+    # Staleness, measured by arrival time on the host's monotonic clock (not header stamps).
+    joy_stale: 0.2
+    eef_stale: 0.5
+    pose_stale: 0.5
+
+    # Servo
+    servo_pose_topic: /servo_node/pose_target_cmds
+    servo_switch_service: /servo_node/switch_command_type
+    servo_status_topic: /servo_node/status
+    stream_hz: 50.0

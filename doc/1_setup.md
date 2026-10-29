@@ -9,7 +9,7 @@ One uv-managed venv on the system Python 3.12 with `--system-site-packages`, so 
 ```bash
 cd ~/workspaces/movensys-imitation
 scripts/setup_venv.sh        # installs uv if missing, creates .venv, torch cu128, lerobot 0.6.1, this package
-source env.bash              # every terminal: ROS_DOMAIN_ID=70, Jazzy, movensys_ws overlay, .venv
+source env.bash              # every terminal: ROS_DOMAIN_ID=0, Jazzy, movensys_ws overlay, .venv
 scripts/smoke_test_gym.sh    # 500 Diffusion steps on lerobot/pusht, then 5 gym-pusht eval episodes
 ```
 
@@ -35,7 +35,7 @@ Verified on 2026-10-13: `cuda: True | torch 2.11.0+cu128 | lerobot 0.6.1 | numpy
 
 ## 1.2 Domain ID and sim time
 
-`~/.bashrc` sets `ROS_DOMAIN_ID=70`; both the manipulator and the teleop compose files pass `${ROS_DOMAIN_ID}` through from the host shell, so start containers from a shell that has it. Ignore the 73 in the manipulator README. `use_sim_time` is true in sim and HIL, false on the real robot.
+`ROS_DOMAIN_ID=0` is the project domain (decided 2026-10-24; `~/.bashrc` and `env.bash` both export 0, Isaac Sim's ROS 2 bridge uses the default 0 and `rmw_fastrtps_cpp`, which interoperates with the cyclonedds host and containers); both the manipulator and the teleop compose files pass `${ROS_DOMAIN_ID}` through from the host shell, so start containers from a shell that has it. Ignore the 73 in the manipulator README. `use_sim_time` is true in sim and HIL, false on the real robot.
 
 ## 1.3 Manipulator container (task P0.3)
 

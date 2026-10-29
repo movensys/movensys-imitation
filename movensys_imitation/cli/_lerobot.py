@@ -9,7 +9,12 @@ from __future__ import annotations
 import importlib
 import importlib.util
 import multiprocessing
+import sys
+import tempfile
 from collections.abc import Callable
+from pathlib import Path
+
+import yaml
 
 from movensys_imitation.policies import register_all
 
@@ -58,7 +63,46 @@ def _preload_gym_packages() -> None:
         multiprocessing.set_forkserver_preload(present)
 
 
+def _deep_merge(base: dict, override: dict) -> dict:
+    out = dict(base)
+    for key, value in override.items():
+        if isinstance(value, dict) and isinstance(out.get(key), dict):
+            out[key] = _deep_merge(out[key], value)
+        else:
+            out[key] = value
+    return out
+
+
+def merge_config_paths(argv: list[str]) -> list[str]:
+    """Allow ``--config_path=a.yaml,b.yaml``: later files deep-merge over earlier ones.
+
+    Draccus takes one config file. The project keeps task settings (``pusht_gym.yaml``) and
+    policy settings (``diffusion.yaml`` ...) in separate fragments, so a comma-separated list is
+    merged into one temporary YAML before LeRobot's parser sees it. A single path is passed
+    through untouched (this keeps ``--config_path=.../train_config.json --resume=true`` working).
+    """
+    for index, arg in enumerate(argv):
+        if arg.startswith("--config_path=") and "," in arg:
+            paths = [Path(p) for p in arg.removeprefix("--config_path=").split(",") if p]
+            merged: dict = {}
+            for path in paths:
+                with open(path) as f:
+                    data = yaml.safe_load(f) or {}
+                if not isinstance(data, dict):
+                    raise ValueError(f"{path} must contain a mapping at the top level")
+                merged = _deep_merge(merged, data)
+            tmp = tempfile.NamedTemporaryFile(
+                "w", suffix=".yaml", delete=False, prefix="movensys_cfg_"
+            )
+            yaml.safe_dump(merged, tmp, default_flow_style=False)
+            tmp.close()
+            argv = list(argv)
+            argv[index] = f"--config_path={tmp.name}"
+    return argv
+
+
 def run(command: str) -> None:
     _preload_gym_packages()
     register_all()
+    sys.argv[1:] = merge_config_paths(sys.argv[1:])
     _resolve(command)()

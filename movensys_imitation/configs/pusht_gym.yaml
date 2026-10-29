@@ -1,0 +1,20 @@
+# Stage 1 task config: gym-pusht through LeRobot (plan Section 4, Table R1; Section 6 budget).
+# Compose with a policy YAML:  movensys-train --config_path=configs/pusht_gym.yaml,configs/diffusion.yaml
+# Later files override earlier ones (deep merge, see movensys_imitation/cli/_lerobot.py).
+dataset:
+  repo_id: lerobot/pusht
+env:
+  type: pusht
+seed: 1000            # training seed; the benchmark passes --seed per run
+steps: 100000
+batch_size: 64
+num_workers: 4
+env_eval_freq: 25000
+save_freq: 25000
+log_freq: 200
+eval:
+  n_episodes: 50
+  batch_size: 50
+  use_async_envs: false   # see doc/1_setup.md, known issues
+wandb:
+  enable: false
