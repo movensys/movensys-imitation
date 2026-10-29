@@ -105,6 +105,7 @@ class SpaceMouseTeleop(Node):
         self.joy_buttons: list[int] = []
         self.joy_rx = -math.inf
         self.twist_mode_set = False
+        self.pose_writers: list[str] = []
         self.gripper_closed = False
         self.last_state = ""
 
@@ -117,6 +118,8 @@ class SpaceMouseTeleop(Node):
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
         self.switch_client = self.create_client(ServoCommandType, p["servo_switch_service"])
         self.gripper_client = self.create_client(SetBool, p["gripper_service"])
+        # Graph introspection is too slow for the 50 Hz tick; refresh the owner check at 2 Hz.
+        self.create_timer(0.5, self._refresh_pose_writers)
         self.switch_timer = self.create_timer(1.0, self._ensure_twist_mode)
         steady = Clock(clock_type=ClockType.STEADY_TIME)
         self.period = 1.0 / p["stream_hz"]
@@ -158,7 +161,7 @@ class SpaceMouseTeleop(Node):
             "stop_cycles": d.stop_cycles,
             "require_deadman": True,
             "deadman_axis": -1,
-            "deadman_button": 12,
+            "deadman_button": 13,
             "deadman_threshold": 0.6,
             "mode_cycle_button": -1,
             "mode_cycle_list": ["full", "translation", "planar", "vertical"],
@@ -242,8 +245,8 @@ class SpaceMouseTeleop(Node):
             self.deadman_threshold,
         )
 
-    def _pose_writers(self) -> list[str]:
-        return [
+    def _refresh_pose_writers(self) -> None:
+        self.pose_writers = [
             f"{i.node_namespace.rstrip('/')}/{i.node_name}"
             for i in self.get_publishers_info_by_topic(self.pose_topic)
         ]
@@ -266,10 +269,10 @@ class SpaceMouseTeleop(Node):
     def _ensure_twist_mode(self) -> None:
         if self.twist_mode_set or not self.switch_client.service_is_ready():
             return
-        writers = self._pose_writers()
-        if writers:
+        self._refresh_pose_writers()
+        if self.pose_writers:
             self.get_logger().warning(
-                f"Servo pose topic owned by {writers}; not switching to TWIST",
+                f"Servo pose topic owned by {self.pose_writers}; not switching to TWIST",
                 throttle_duration_sec=10.0,
             )
             return
@@ -293,7 +296,7 @@ class SpaceMouseTeleop(Node):
     # --- control cycle ------------------------------------------------------------------------
 
     def _tick(self) -> None:
-        if self._pose_writers():
+        if self.pose_writers:
             # The guard or the Quest teleop owns Servo (and has switched it to POSE): hold and
             # re-switch once they are gone.
             self.twist_mode_set = False

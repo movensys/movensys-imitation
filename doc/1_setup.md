@@ -70,13 +70,18 @@ Missing: the ROS driver, one apt install with a password:
 sudo apt install ros-jazzy-spacenav
 systemctl is-active spacenavd            # active; else: sudo systemctl enable --now spacenavd
 python3 -c "import ctypes; l = ctypes.CDLL('libspnav.so.0'); print(l.spnav_open())"   # 0 = daemon reachable
-ros2 launch movensys_imitation_ros spacenav.launch.py && ros2 topic echo /spacenav/joy
+ros2 launch movensys_imitation_ros spacenav.launch.py      # driver + 60 Hz throttle (topic_tools)
+ros2 run movensys_imitation_ros spacemouse_probe            # axes and key indices
 ```
+
+Installed 2026-10-29 (`ros-jazzy-spacenav` 3.3.0, pulls `libspnav-dev`); `ros-jazzy-topic-tools`
+was already present.
 
 Notes.
 
 - `spacenav_node` talks to `spacenavd`, which grabs the evdev device, so `joy_node` on
   `/dev/input/js0` is not an alternative while the daemon runs; use the spacenav node.
+- The driver's Joy runs at 1 kHz; the launch throttles it to 60 Hz (`doc/4_sim.md`).
 - Over the wireless receiver the daemon works the same; check `ros2 topic hz /spacenav/joy`
   for gaps before collecting. The cable is the reference setup.
 - Use and calibration: `doc/4_sim.md`, "SpaceMouse input".

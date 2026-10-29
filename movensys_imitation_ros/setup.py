@@ -34,6 +34,7 @@ setup(
             "planar_guard = movensys_imitation_ros.planar_guard:main",
             # SpaceMouse free teleop (system ROS packages only, like the guard).
             "spacemouse_teleop = movensys_imitation_ros.spacemouse_teleop:main",
+            "spacemouse_probe = movensys_imitation_ros.spacemouse_probe:main",
             # The scorer, the recorder, the manager and their tools need the venv (numpy 2,
             # OpenCV, shapely, LeRobot): start them with python -m movensys_imitation_ros.<module>,
             # see doc/4_sim.md.

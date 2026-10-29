@@ -17,9 +17,12 @@ spacemouse_teleop:
     # Runtime: ros2 param set /spacemouse_teleop motion_mode translation
     motion_mode: full
 
-    # /spacenav/joy axes = [x, y, z, roll, pitch, yaw] -> twist (tx, ty, tz, rx, ry, rz).
-    # Calibrate from the operator's position (doc/4_sim.md, "SpaceMouse"): push the puck away
-    # and the tool must move away from you; fix yaw_deg / axis_sign until each axis agrees.
+    # /spacenav/joy axes = [x, y, z, roll, pitch, yaw] -> twist (tx, ty, tz, rx, ry, rz), ROS
+    # convention: x is the push away/toward the operator, y left/right, z up/down. A push also
+    # tilts the puck (probe, 2026-10-29: x 0.5 with pitch 0.8), so park in motion_mode
+    # translation; full mode is for deliberate 6-DoF moves. Calibrate from the operator's
+    # position (doc/4_sim.md, "SpaceMouse"): push the puck away and the tool must move away
+    # from you; fix yaw_deg / axis_sign until each axis agrees.
     axis_map: [0, 1, 2, 3, 4, 5]
     axis_sign: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
     yaw_deg: 0.0                  # rotate operator x, y (and roll, pitch) onto the robot base
@@ -32,13 +35,13 @@ spacemouse_teleop:
     linear_gain: 0.05
     angular_gain: 0.05
 
-    # Dead-man: hold a side key (spacenavd button number; find it with
-    # `ros2 topic echo /spacenav/joy`; 12 is expected to be SHIFT on the SpaceMouse Pro).
+    # Dead-man: hold a side key (spacenavd button number; 13 is the key chosen with
+    # spacemouse_probe on the SpaceMouse Pro Wireless, 2026-10-29).
     # require_deadman turns it on and off (runtime: ros2 param set ... require_deadman false,
     # sim only).
     require_deadman: true
     deadman_axis: -1
-    deadman_button: 12
+    deadman_button: 13
     deadman_threshold: 0.6
 
     # Other keys (-1 = unused): a rising edge cycles mode_cycle_list, or toggles the gripper.

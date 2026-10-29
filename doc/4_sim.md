@@ -124,19 +124,34 @@ the order is: park with `spacemouse_teleop`, Ctrl-C it, launch the guard or the 
 ### Driver bring-up (once)
 
 ```bash
-ros2 launch movensys_imitation_ros spacenav.launch.py      # spacenav_node, zero_when_static
-ros2 topic hz /spacenav/joy                                 # puck at rest: must stay above 5 Hz
-ros2 topic echo /spacenav/joy                               # axes [x, y, z, roll, pitch, yaw], buttons
+ros2 launch movensys_imitation_ros spacenav.launch.py      # spacenav_node + 60 Hz throttle
+ros2 topic hz /spacenav/joy                                 # 60 Hz, puck at rest included
+ros2 run movensys_imitation_ros spacemouse_probe            # prints deflected axes and key presses
 ```
 
-`/spacenav/joy` axes are raw counts over `full_scale`, so about -1..1, and the puck returns to
-exactly 0. At rest the node republishes zeros about every 30 ms (`zero_when_static`), which
-keeps the consumers' `joy_stale` (0.2 s) watchdog quiet; if `hz` shows it publishes only on
-motion, raise `joy_stale` in `joy_spacemouse.yaml` and `spacemouse_teleop.yaml`. Press the
-side key you want as dead-man and read its index off `buttons`; put it in `deadman_button` of
-both files (12 is the expected index of SHIFT, lower-left row, on the SpaceMouse Pro;
-unverified until the driver runs). The dead-man is held, not toggled: `require_deadman`
-turns the requirement on and off (sim only off).
+Measured 2026-10-29 (`ros-jazzy-spacenav` 3.3.0): the driver publishes its Joy on every 1 ms
+tick, 1000 Hz with the puck at rest. The launch therefore remaps the driver's Joy to
+`/spacenav/joy_raw` and a `topic_tools` throttle republishes `/spacenav/joy` at `joy_hz`,
+default 60, the Quest controller's rate. Never point the nodes at `joy_raw`. Steady-state
+CPU of the guard on the lab box (8 s windows, Joy subscription only, no TF): 9 % with no
+Joy, 16 % at 50 Hz, 17 % at 60 Hz, 25 % at 100 Hz, 50 % on the raw stream; the teleop node
+is similar. The cost is rclpy's per-wake-up overhead, not the packets: a guard not
+subscribed to the raw stream stays at 9 %, with or without multicast. The axes are raw counts over
+`full_scale` (512), so about -1..1, and exactly 0.0 at rest (`zero_when_static`); the buttons
+array starts with two entries and grows to the highest key pressed so far, which the dead-man
+helper reads as "not held" until the first press. `/spacenav/twist` and the offsets stay
+unthrottled (about 32 Hz at rest).
+
+The axes follow the ROS convention (`spacenav_node` remaps libspnav): 0 x is the push away
+from / toward the operator, 1 y left/right, 2 z up/down, 3 roll, 4 pitch, 5 yaw. Run
+`spacemouse_probe`, push the puck one way at a time and read which axis moves with which
+sign, then press the key you want as dead-man and read its index; Ctrl-C prints a summary.
+Probe run of 2026-10-29 (SpaceMouse Pro Wireless): a push along the cable axis gave x about
+0.5 together with pitch about 0.8 (a push also tilts the puck, so the guard, which only
+reads x and y, is unaffected, while the free-motion teleop should park in `translation`
+mode); twist gave yaw alone up to 0.98; the chosen side key is index 13. That index is in
+`deadman_button` of `joy_spacemouse.yaml` and `spacemouse_teleop.yaml`. The dead-man is
+held, not toggled: `require_deadman` turns the requirement on and off (sim only off).
 
 ### Collection with the SpaceMouse
 
@@ -148,7 +163,8 @@ ros2 launch movensys_imitation_ros collect.launch.py mode:=sim operator:=name de
 `device:=quest` (default) or `device:=spacemouse` appends `config/dobot_cr3a/joy_<device>.yaml`
 after `guard.yaml` (topic, axes, deadzone, dead-man); with the SpaceMouse the driver is
 included (`driver:=false` if `spacenav.launch.py` already runs in another shell). The guard log
-line must read `joy /spacenav/joy axes [0, 1] deadman=button <n>`.
+line must read `joy /spacenav/joy axes [1, 0] deadman=button 13` (the guard reads the
+stick as right, forward; ROS y is positive to the left, hence `stick_invert_x`).
 
 Calibrate once from where you sit or stand while collecting, exactly as for the Quest stick:
 hold the dead-man, push the puck away from you, and the tip must move away from you; push it
