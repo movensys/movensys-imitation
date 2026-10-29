@@ -7,7 +7,10 @@ measured end-effector pose, the Quest Joy state and the current pose command to
 latched z and orientation to ``/servo_node/pose_target_cmds`` and ``/pusht/target_guarded``.
 
 Inputs
-    /quest_pose_publisher/joy_right   sensor_msgs/Joy          thumbstick and grip (dead-man)
+    joy_topic (Quest /quest_pose_publisher/joy_right or SpaceMouse /spacenav/joy)
+                                      sensor_msgs/Joy          stick axes and dead-man (grip
+                                                               axis or a held button; see
+                                                               config/*/joy_*.yaml)
     /pusht/target_raw                 geometry_msgs/PoseStamped  absolute target (source "pose")
     /pusht/waypoints                  nav_msgs/Path            timed waypoints, interpolated
     TF planning_frame -> eef_frame, or /wmx/moveit2/eef_pose   measured end effector
@@ -50,6 +53,7 @@ from std_srvs.srv import SetBool, Trigger
 import tf2_ros
 
 from movensys_imitation_ros.guard_core import (
+    deadman_held,
     GuardConfig,
     GuardCore,
     Inputs,
@@ -83,6 +87,7 @@ class PlanarGuard(Node):
         self.stick_axes = [int(a) for a in p["stick_axes"]]
         self.require_deadman: bool = p["require_deadman"]
         self.deadman_axis: int = p["deadman_axis"]
+        self.deadman_button: int = p["deadman_button"]
         self.deadman_threshold: float = p["deadman_threshold"]
         self.lift_height: float = p["lift_height"]
 
@@ -112,6 +117,7 @@ class PlanarGuard(Node):
         self.eef_pose: PoseStamped | None = None
         self.eef_rx = 0.0
         self.joy_axes: list[float] = []
+        self.joy_buttons: list[int] = []
         self.joy_rx = -math.inf
         self.pose_cmd: tuple[float, float] | None = None
         self.pose_rx = -math.inf
@@ -155,7 +161,8 @@ class PlanarGuard(Node):
             f"planar_guard: source={source} eef={self.eef_source} area centre "
             f"{config.area_center} size {config.area_size} step {config.step_limit} m "
             f"lead {config.eef_distance_limit} m max_speed {config.max_speed} m/s "
-            f"lift {self.lift_height} m deadman={'on' if self.require_deadman else 'OFF'}"
+            f"lift {self.lift_height} m joy {p['joy_topic']} axes {self.stick_axes} "
+            f"deadman={self._deadman_desc()}"
         )
         self._publish_lift_state()
 
@@ -186,6 +193,7 @@ class PlanarGuard(Node):
             "max_speed": d.max_speed,
             "require_deadman": True,
             "deadman_axis": 3,
+            "deadman_button": -1,
             "deadman_threshold": 0.6,
             "lift_height": 0.08,
             "step_limit": d.step_limit,
@@ -225,6 +233,7 @@ class PlanarGuard(Node):
 
     def _on_joy(self, msg: Joy) -> None:
         self.joy_axes = list(msg.axes)
+        self.joy_buttons = list(msg.buttons)
         self.joy_rx = time.monotonic()
 
     def _on_eef_pose(self, msg: PoseStamped) -> None:
@@ -386,12 +395,20 @@ class PlanarGuard(Node):
                 f"tool is {self.lift_offset * 1000:+.1f} mm off the plane; ramping it there"
             )
 
+    def _deadman_desc(self) -> str:
+        if not self.require_deadman:
+            return "OFF"
+        if self.deadman_button >= 0:
+            return f"button {self.deadman_button}"
+        return f"axis {self.deadman_axis} >= {self.deadman_threshold}"
+
     def _deadman(self) -> bool:
         if not self.require_deadman:
             return True
-        if self.deadman_axis >= len(self.joy_axes):
-            return False
-        return self.joy_axes[self.deadman_axis] >= self.deadman_threshold
+        return deadman_held(
+            self.joy_axes, self.joy_buttons, self.deadman_axis, self.deadman_button,
+            self.deadman_threshold,
+        )
 
     def _stick(self) -> tuple[float, float] | None:
         ax, ay = self.stick_axes

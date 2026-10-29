@@ -360,6 +360,7 @@ class EpisodeManager(Driver):
         self.operator: str = p["operator"]
         self.mode: str = p["mode"]
         self.teleop_source: str = p["teleop_source"]
+        self.input_device: str = p["input_device"]
         self.seed = int(p["seed_start"])
         self.n_episodes = int(p["n_episodes"])
         self.auto_start: bool = p["auto_start"]
@@ -390,6 +391,7 @@ class EpisodeManager(Driver):
             "mode": "sim",
             "operator": "",
             "teleop_source": "stick",
+            "input_device": "",  # sidecar provenance: quest | spacemouse (collect.launch.py)
             "seed_start": 1000,
             "n_episodes": 10,
             "auto_start": False,
@@ -508,6 +510,7 @@ class EpisodeManager(Driver):
             {
                 "teleport_error_mm": round(d * 1000, 2),
                 "teleport_error_deg": round(math.degrees(dyaw), 2),
+                "input_device": self.input_device,
             },
         )
         self.set_episode_meta(meta)

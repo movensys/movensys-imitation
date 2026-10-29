@@ -14,6 +14,14 @@ ros2 service call /wmx/set_gripper std_srvs/srv/SetBool "{data: true}"    # clos
 ros2 service call /wmx/set_gripper std_srvs/srv/SetBool "{data: false}"   # open
 
 ## Park rod at push height 
+
+With the SpaceMouse (stop it with Ctrl-C before the collection launch; it is a Servo writer):
+```
+ros2 launch movensys_imitation_ros spacemouse_teleop.launch.py mode:=sim
+```
+Hold the dead-man key and drive the tip to about 10 mm above the sheet, tool vertical
+(`motion_mode:=translation` keeps the orientation). Or by service call:
+
 ros2 service call /wmx/moveit2/joint_movement \
   movensys_manipulator_moveit_config/srv/MoveJoints \
   "{joint_names: [joint1, joint2, joint3, joint4, joint5, joint6],
@@ -31,6 +39,10 @@ ros2 service call /wmx/moveit2/absolute_base_eef_joint_movement \
 
 ros2 launch movensys_imitation_ros collect.launch.py mode:=sim operator:=mali n_episodes:=1
 
+With the SpaceMouse as the stick (starts spacenav_node too; hold the dead-man key to move):
+
+ros2 launch movensys_imitation_ros collect.launch.py mode:=sim operator:=mali n_episodes:=1 device:=spacemouse
+
 python -m movensys_imitation_ros.collect_keys
 
 
@@ -43,3 +55,13 @@ mtele ros2 run quest_pose_publisher quest_pose_node --ros-args \
 
 Controller Web ui will be available at this location:
 https://192.168.0.20:48322/client/?codec=h264&maxStreamingBitrateMbps=80&perEyeWidth=1024&perEyeHeight=1024&deviceFrameRate=72#/real/gear/headless
+
+## SpaceMouse teleoperation (3Dconnexion)
+Driver and calibration: `doc/4_sim.md`, "SpaceMouse input"; install: `doc/1_setup.md` 1.7.
+```
+ros2 launch movensys_imitation_ros spacenav.launch.py        # driver alone, to inspect /spacenav/joy
+ros2 launch movensys_imitation_ros spacemouse_teleop.launch.py mode:=sim   # free 6-DoF motion (parking)
+ros2 launch movensys_imitation_ros guard.launch.py mode:=sim device:=spacemouse   # guard stick
+```
+Never together with quest_servo_teleop or the guard: one Servo writer at a time.
+

@@ -21,6 +21,9 @@ planar_guard:
     eef_source: tf
     eef_pose_topic: /wmx/moveit2/eef_pose
 
+    # Input device. The launch files load joy_<device>.yaml (device:=quest | spacemouse) after
+    # this file, so the device block there overrides the Quest values below, which stay here
+    # for the dry-run command that loads guard.yaml alone.
     # Quest controller (quest_pose_publisher, 60 Hz):
     #   axes = [thumbstick_x, thumbstick_y, trigger_value, squeeze_value]
     joy_topic: /quest_pose_publisher/joy_right
@@ -32,10 +35,12 @@ planar_guard:
     expo: 2.0
     max_speed: 0.12             # m/s at full deflection; the step limit caps at 0.25 m/s
 
-    # Dead-man: analog grip (axes[3]) above the threshold. require_deadman false only for
-    # unattended sim evaluation (P2.9); never on the real robot.
+    # Dead-man: analog grip (axes[3]) above the threshold, or a held button when
+    # deadman_button >= 0 (SpaceMouse side key, joy_spacemouse.yaml). require_deadman turns it
+    # on and off: false only for unattended sim evaluation (P2.9); never on the real robot.
     require_deadman: true
     deadman_axis: 3
+    deadman_button: -1
     deadman_threshold: 0.6
 
     # Lift (P2.4): ~/lift true raises the tool this far above the latched plane, ramped at

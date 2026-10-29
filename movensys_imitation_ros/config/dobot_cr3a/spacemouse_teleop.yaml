@@ -1,0 +1,58 @@
+# spacemouse_teleop parameters: free 6-DoF motion from the SpaceMouse through MoveIt Servo in
+# TWIST mode (parking, reach checks). Frames and table numbers come from task.yaml.
+spacemouse_teleop:
+  ros__parameters:
+    joy_topic: /spacenav/joy
+    twist_topic: /servo_node/delta_twist_cmds
+    servo_switch_service: /servo_node/switch_command_type
+    pose_target_topic: /servo_node/pose_target_cmds   # refuse to run while someone owns this
+    gripper_service: /wmx/set_gripper
+
+    # Twist frame: "" = task.planning_frame (world_manipulator, servo.yaml planning_frame);
+    # "Link6" jogs in the tool frame instead (Servo accepts either).
+    frame_id: ""
+    stream_hz: 50.0
+
+    # Motion mask: full | translation | rotation | planar (xy + yaw) | vertical | yaw.
+    # Runtime: ros2 param set /spacemouse_teleop motion_mode translation
+    motion_mode: full
+
+    # /spacenav/joy axes = [x, y, z, roll, pitch, yaw] -> twist (tx, ty, tz, rx, ry, rz).
+    # Calibrate from the operator's position (doc/4_sim.md, "SpaceMouse"): push the puck away
+    # and the tool must move away from you; fix yaw_deg / axis_sign until each axis agrees.
+    axis_map: [0, 1, 2, 3, 4, 5]
+    axis_sign: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    yaw_deg: 0.0                  # rotate operator x, y (and roll, pitch) onto the robot base
+    deadzone: 0.05                # per axis; the puck self-centres to exactly zero
+    expo: 1.0
+
+    # Speed. Servo's unitless scale is 0.4 m/s linear and 0.8 rad/s rotational
+    # (movensys_manipulator_moveit_config servo.yaml), so a gain is a fraction of that:
+    # 0.05 -> 2 cm/s and 2.3 deg/s at full deflection. Raise after the first runs.
+    linear_gain: 0.05
+    angular_gain: 0.05
+
+    # Dead-man: hold a side key (spacenavd button number; find it with
+    # `ros2 topic echo /spacenav/joy`; 12 is expected to be SHIFT on the SpaceMouse Pro).
+    # require_deadman turns it on and off (runtime: ros2 param set ... require_deadman false,
+    # sim only).
+    require_deadman: true
+    deadman_axis: -1
+    deadman_button: 12
+    deadman_threshold: 0.6
+
+    # Other keys (-1 = unused): a rising edge cycles mode_cycle_list, or toggles the gripper.
+    mode_cycle_button: -1
+    mode_cycle_list: ["full", "translation", "planar", "vertical"]
+    gripper_button: -1
+
+    # Tool floor: downward translation is zeroed once Link6 z <= table_z + link6_to_tip_bottom
+    # + tip_floor_clearance (tip touching the table at 0.0). Needs TF; without it the node
+    # faults (eef_stale) rather than moving blind. z_floor_enabled false only in a scene
+    # without a table.
+    z_floor_enabled: true
+    tip_floor_clearance: 0.0
+
+    # Watchdog and stop burst.
+    joy_stale: 0.2                # s; no command when /spacenav/joy is older (Servo halts)
+    stop_cycles: 5                # zero twists after the dead-man is released

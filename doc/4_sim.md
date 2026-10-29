@@ -102,6 +102,119 @@ published target within 1 mm of the latched value; `hold:` at all four edges; `h
 after stopping `quest_pose_node`; no `servo_halted` inside the area (this also closes the P2.1
 corner check). Unit tests: `pytest movensys_imitation_ros/test/test_guard_core.py`.
 
+## SpaceMouse input (P2.2b)
+
+A 3Dconnexion SpaceMouse (Pro Wireless, used cabled) is a second input next to the Quest,
+decided 2026-10-29 on branch `feature/support-for-3d-spacemouse`. It runs on the host through
+`spacenav_node` (`ros-jazzy-spacenav`, which talks to the `spacenavd` daemon; install in
+`doc/1_setup.md` 1.7) and serves two jobs:
+
+* **Collection**: the puck is the guard's stick instead of the Quest thumbstick. The guard
+  output, the dataset and the manager are unchanged; the sidecar records `input_device`.
+* **Free motion**: `spacemouse_teleop` jogs the arm in 6-DoF through Servo's TWIST mode, for
+  parking the rod at push height and the reach checks, in place of the joint-movement service
+  calls or `keyboard_teleop`.
+
+One Servo writer at a time still holds: the guard, `quest_servo_teleop`, `keyboard_teleop` in
+`p` or `t` mode and `spacemouse_teleop` never run together. The teleop node checks for a
+publisher on `/servo_node/pose_target_cmds` before it switches Servo to TWIST and holds with
+`hold:pose_writer` while one exists; the guard switches Servo back to POSE when it starts, so
+the order is: park with `spacemouse_teleop`, Ctrl-C it, launch the guard or the collect stack.
+
+### Driver bring-up (once)
+
+```bash
+ros2 launch movensys_imitation_ros spacenav.launch.py      # spacenav_node, zero_when_static
+ros2 topic hz /spacenav/joy                                 # puck at rest: must stay above 5 Hz
+ros2 topic echo /spacenav/joy                               # axes [x, y, z, roll, pitch, yaw], buttons
+```
+
+`/spacenav/joy` axes are raw counts over `full_scale`, so about -1..1, and the puck returns to
+exactly 0. At rest the node republishes zeros about every 30 ms (`zero_when_static`), which
+keeps the consumers' `joy_stale` (0.2 s) watchdog quiet; if `hz` shows it publishes only on
+motion, raise `joy_stale` in `joy_spacemouse.yaml` and `spacemouse_teleop.yaml`. Press the
+side key you want as dead-man and read its index off `buttons`; put it in `deadman_button` of
+both files (12 is the expected index of SHIFT, lower-left row, on the SpaceMouse Pro;
+unverified until the driver runs). The dead-man is held, not toggled: `require_deadman`
+turns the requirement on and off (sim only off).
+
+### Collection with the SpaceMouse
+
+```bash
+ros2 launch movensys_imitation_ros guard.launch.py mode:=sim device:=spacemouse
+ros2 launch movensys_imitation_ros collect.launch.py mode:=sim operator:=name device:=spacemouse
+```
+
+`device:=quest` (default) or `device:=spacemouse` appends `config/dobot_cr3a/joy_<device>.yaml`
+after `guard.yaml` (topic, axes, deadzone, dead-man); with the SpaceMouse the driver is
+included (`driver:=false` if `spacenav.launch.py` already runs in another shell). The guard log
+line must read `joy /spacenav/joy axes [0, 1] deadman=button <n>`.
+
+Calibrate once from where you sit or stand while collecting, exactly as for the Quest stick:
+hold the dead-man, push the puck away from you, and the tip must move away from you; push it
+right and the tip must move to your right. Fix `stick_yaw_deg` (90-degree steps first, then
+fine) and `stick_invert_x` / `stick_invert_y` in `joy_spacemouse.yaml` until both agree. The
+deadzone starts at 0.05 (the puck self-centres; the Quest needs 0.15) and `expo` 2.0; adjust
+after the first episodes. `max_speed` is shared with the Quest in `guard.yaml`.
+
+### Free motion: parking and reach checks
+
+```bash
+ros2 launch movensys_imitation_ros spacemouse_teleop.launch.py mode:=sim            # 6-DoF
+ros2 launch movensys_imitation_ros spacemouse_teleop.launch.py mode:=sim motion_mode:=planar
+ros2 topic echo /spacemouse_teleop/state
+ros2 param set /spacemouse_teleop motion_mode translation
+```
+
+Parameters: `config/dobot_cr3a/spacemouse_teleop.yaml`. Each 50 Hz cycle maps the six axes
+to a unitless `TwistStamped` in `world_manipulator` (or `Link6` with `frame_id`): per-axis
+deadzone 0.05 and expo, the motion mask (`full`, `translation`, `rotation`, `planar`,
+`vertical`, `yaw`; same presets as the Quest teleop), `yaw_deg` to rotate the operator's x, y
+onto the robot base (translation and roll/pitch together), then `linear_gain` and
+`angular_gain` as fractions of Servo's `scale` (0.4 m/s, 0.8 rad/s in
+`movensys_manipulator_moveit_config` `servo.yaml`): the starting 0.05 gives 2 cm/s and
+2.3 deg/s at full deflection; raise after the first runs. Calibrate signs with `axis_sign`
+and `yaw_deg` the same way as the stick, one axis at a time.
+
+States on `~/state`: `moving`, `hold:centred` (dead-man held, puck at rest: zero twists keep
+Servo engaged), `hold:deadman` (released: five zero twists, then silence and Servo's own
+0.1 s timeout halt), `hold:joy_stale` (driver gone: nothing published), `hold:pose_writer`
+and `hold:servo_mode` (another owner, or the TWIST switch not yet accepted),
+`fault:eef_stale` (no TF: the tool floor cannot be enforced, so nothing is published). The
+floor zeroes downward translation once `Link6` z is at `table_z + link6_to_tip_bottom +
+tip_floor_clearance` (tip on the table at 0.0; `z_floor_enabled: false` only without a
+table), because Servo's collision world does not contain the table. Servo's singularity and
+joint-limit stops apply as always. Optional keys: `mode_cycle_button` steps through
+`mode_cycle_list`, `gripper_button` toggles `/wmx/set_gripper`.
+
+Verified 2026-10-29 without Servo (topics remapped, a fake switch service and a fake Joy
+with axis 1 at 1.0 and the dead-man held): one TWIST switch request, `moving`, 50 Hz
+`TwistStamped` in `world_manipulator` with `linear.y` 0.05; with a fake publisher on the
+pose topic the node holds with `hold:pose_writer` and never switches.
+
+### Dry run without touching Servo
+
+```bash
+ros2 run movensys_imitation_ros spacemouse_teleop --ros-args \
+  -r /servo_node/delta_twist_cmds:=/pusht/teleop_dryrun \
+  -r /servo_node/switch_command_type:=/pusht/teleop_dryrun_switch \
+  --params-file install/movensys_imitation_ros/share/movensys_imitation_ros/config/dobot_cr3a/task.yaml \
+  --params-file install/movensys_imitation_ros/share/movensys_imitation_ros/config/dobot_cr3a/spacemouse_teleop.yaml
+```
+
+The guard dry run above takes `joy_spacemouse.yaml` as a third `--params-file`.
+
+### Evidence for the done cell
+
+Stick path, as for P2.2 with the SpaceMouse: `/pusht/target_guarded` at 50 Hz, z within 1 mm,
+`hold:` at all four edges, `hold:deadman` on releasing the key, `hold:joy_stale` after
+stopping `spacenav_node`, no `servo_halted` inside the area. Twist path: park the rod at push
+height from the home pose with `spacemouse_teleop` alone, the floor holds the tip at the table
+(`hold:z_floor` while pushing down), Servo halts within 0.2 s of releasing the key, and
+`ros2 topic info -v` on both Servo input topics shows one writer at any time. Unit tests:
+`pytest movensys_imitation_ros/test/test_spacemouse_core.py` and the dead-man cases in
+`test_guard_core.py`.
+
 ## Scorer (P2.3)
 
 Coverage is `area(T ∩ goal) / area(goal)` as in gym-pusht, success at 0.95; IoU is reported

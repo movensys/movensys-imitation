@@ -233,3 +233,24 @@ def test_ramp_moves_at_most_step_limit_and_lands_exactly():
     assert steps == 16  # 0.08 / 0.005
     assert core.ramp(0.08, 0.0) == pytest.approx(0.075)
     assert core.ramp(0.003, 0.0) == 0.0
+
+
+# --- dead-man selector (Quest grip axis or SpaceMouse button) ------------------------------------
+
+
+def test_deadman_button_when_selected():
+    from movensys_imitation_ros.guard_core import deadman_held
+
+    assert deadman_held([], [0, 1], axis=-1, button=1)
+    assert not deadman_held([], [0, 0], axis=-1, button=1)
+    assert not deadman_held([], [1], axis=-1, button=1), "missing button index is not held"
+    assert deadman_held([0.0, 0.0, 0.0, 0.0], [1], axis=3, button=0), "button wins over axis"
+
+
+def test_deadman_axis_threshold():
+    from movensys_imitation_ros.guard_core import deadman_held
+
+    assert deadman_held([0.0, 0.0, 0.0, 0.6], [], axis=3, threshold=0.6)
+    assert not deadman_held([0.0, 0.0, 0.0, 0.59], [], axis=3, threshold=0.6)
+    assert not deadman_held([0.0], [], axis=3), "missing axis index is not held"
+    assert not deadman_held([1.0], [1], axis=-1, button=-1), "no selector is never held"

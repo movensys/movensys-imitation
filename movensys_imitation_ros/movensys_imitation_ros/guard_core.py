@@ -31,6 +31,23 @@ SOURCE_POSE = "pose"
 SOURCES = (SOURCE_STICK, SOURCE_POSE)
 
 
+def deadman_held(
+    axes, buttons, axis: int = -1, button: int = -1, threshold: float = 0.6
+) -> bool:
+    """
+    Return True while the operator holds the dead-man.
+
+    ``button`` >= 0 reads ``Joy.buttons[button]`` (SpaceMouse: a momentary side key, held with
+    the free hand); otherwise ``axis`` >= 0 reads ``Joy.axes[axis] >= threshold`` (Quest: the
+    analog grip). A missing index, or neither selector set, is "not held".
+    """
+    if button >= 0:
+        return button < len(buttons) and buttons[button] != 0
+    if axis >= 0:
+        return axis < len(axes) and axes[axis] >= threshold
+    return False
+
+
 @dataclass
 class GuardConfig:
     """Guard parameters; defaults are plan Section 5 and scene_9a.json."""

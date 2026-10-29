@@ -1,0 +1,19 @@
+# Quest right controller as the guard's stick (quest_pose_publisher, about 60 Hz):
+#   axes    = [thumbstick_x, thumbstick_y, trigger_value, squeeze_value]
+#   buttons = [primary_click, secondary_click, thumbstick_click, menu_click]
+# Selected by guard.launch.py and collect.launch.py with device:=quest (the default). Loaded
+# after guard.yaml, so these values win; they mirror guard.yaml so the dry-run command in
+# doc/4_sim.md (guard.yaml alone) behaves the same.
+planar_guard:
+  ros__parameters:
+    joy_topic: /quest_pose_publisher/joy_right
+    stick_axes: [0, 1]
+    stick_yaw_deg: 0.0
+    stick_invert_x: false
+    stick_invert_y: false
+    deadzone: 0.15
+    expo: 2.0
+    # Dead-man: the analog grip (axes[3]) above the threshold.
+    deadman_axis: 3
+    deadman_button: -1
+    deadman_threshold: 0.6

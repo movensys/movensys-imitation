@@ -58,3 +58,26 @@ sudo --preserve-env=PATH,AMENT_PREFIX_PATH,COLCON_PREFIX_PATH,PYTHONPATH,LD_LIBR
   bash -c "source /opt/ros/jazzy/setup.bash && source ~/workspaces/movensys_ws/install/setup.bash && \
            ros2 launch wmx_r2_package wmx_r2_cr3a_manipulator.launch.py"
 ```
+
+## 1.7 3Dconnexion SpaceMouse (branch feature/support-for-3d-spacemouse)
+
+Host state found 2026-10-29: SpaceMouse Pro Wireless on USB (`256f:c631`, cabled), `spacenavd`
+1.2 active and enabled with its socket at `/var/run/spnav.sock`, `libspnav0` installed, the
+user in the `input` group (`/dev/input/js0`, `event25`), and `ros-jazzy-joy` installed.
+Missing: the ROS driver, one apt install with a password:
+
+```bash
+sudo apt install ros-jazzy-spacenav
+systemctl is-active spacenavd            # active; else: sudo systemctl enable --now spacenavd
+python3 -c "import ctypes; l = ctypes.CDLL('libspnav.so.0'); print(l.spnav_open())"   # 0 = daemon reachable
+ros2 launch movensys_imitation_ros spacenav.launch.py && ros2 topic echo /spacenav/joy
+```
+
+Notes.
+
+- `spacenav_node` talks to `spacenavd`, which grabs the evdev device, so `joy_node` on
+  `/dev/input/js0` is not an alternative while the daemon runs; use the spacenav node.
+- Over the wireless receiver the daemon works the same; check `ros2 topic hz /spacenav/joy`
+  for gaps before collecting. The cable is the reference setup.
+- Use and calibration: `doc/4_sim.md`, "SpaceMouse input".
+

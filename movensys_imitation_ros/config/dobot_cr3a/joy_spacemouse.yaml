@@ -1,0 +1,26 @@
+# 3Dconnexion SpaceMouse as the guard's stick, through spacenav_node (ros-jazzy-spacenav,
+# started by spacenav.launch.py; the launch files include it with device:=spacemouse).
+# /spacenav/joy: axes = [x, y, z, roll, pitch, yaw], raw counts / full_scale so about -1..1;
+# buttons as numbered by spacenavd (SpaceMouse Pro: 15 keys). At rest the node publishes zeros
+# about every 30 ms (zero_when_static), which keeps the guard's joy_stale watchdog quiet.
+# Selected by guard.launch.py and collect.launch.py with device:=spacemouse.
+planar_guard:
+  ros__parameters:
+    joy_topic: /spacenav/joy
+    # Puck push: axis 0 is left/right, axis 1 is away/toward the operator. Calibrate once from
+    # the operator's position (doc/4_sim.md, "SpaceMouse"): with the puck pushed away, the tip
+    # must move away from you; fix stick_yaw_deg / stick_invert_* until it does.
+    stick_axes: [0, 1]
+    stick_yaw_deg: 0.0
+    stick_invert_x: false
+    stick_invert_y: false
+    # The puck self-centres to exactly zero, so a small deadzone is enough (Quest: 0.15).
+    deadzone: 0.05
+    expo: 2.0
+    # Dead-man: hold a side key with the free hand while the other drives the puck. The index
+    # is spacenavd's button number; find it with `ros2 topic echo /spacenav/joy` while pressing
+    # the key you want (12 is expected to be SHIFT, lower-left row, on the SpaceMouse Pro).
+    # require_deadman (guard.yaml) turns the dead-man on and off.
+    deadman_axis: -1
+    deadman_button: 12
+    deadman_threshold: 0.6
