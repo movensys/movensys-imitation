@@ -144,6 +144,13 @@ class GuardCore:
 
     # --- state ------------------------------------------------------------------------------
 
+    def ramp(self, current: float, goal: float) -> float:
+        """Move a scalar (the lift offset) toward ``goal`` by at most ``step_limit``."""
+        d = goal - current
+        if abs(d) <= self.config.step_limit:
+            return goal
+        return current + math.copysign(self.config.step_limit, d)
+
     def reset(self) -> None:
         """Forget the target; the next cycle re-anchors on the measured end effector."""
         self.target = None

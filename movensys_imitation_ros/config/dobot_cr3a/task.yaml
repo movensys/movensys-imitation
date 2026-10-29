@@ -13,6 +13,10 @@
       table_z: 0.0431                 # sim (3a collision mesh); real: measure at P4.4
       link6_to_tip_bottom: 0.22       # Link6 origin to tip bottom along the tool axis
       tip_clearance_nominal: 0.010    # tip bottom above the table while pushing
+      # Tip parking points between episodes (P2.4), inside the push area near the robot. The
+      # episode manager picks the one farthest from the T's start footprint, homes there with
+      # the tool lifted, teleports the T, then lowers. Flattened x, y pairs.
+      home_candidates: [-0.03, 0.08, -0.25, 0.08, 0.19, 0.08]
       rates:
         policy_hz: 10.0
         guard_hz: 50.0

@@ -10,6 +10,11 @@ planar_guard:
     # (park the rod at push height first). Set z_setpoint > 0 to override the latched z;
     # the sim reference for a tip 10 mm above the table is 0.2731 (scene_9a.json).
     z_setpoint: -1.0
+    # latch_mode (node default "measured", not set here so the launch can override it):
+    # "measured" latches where the tool is (real robot: park it at push height first);
+    # "nominal" latches at table_z + link6_to_tip_bottom + tip_clearance_nominal and ramps the
+    # tool there. collect.launch.py selects nominal in sim so a restart after a fault (tool
+    # left lifted by the safe stop) does not inherit the lifted height.
 
     # Measured end-effector pose: "tf" (world_manipulator -> Link6, as the hand teleop does)
     # or "topic" (/wmx/moveit2/eef_pose from moveit2_api).
@@ -32,6 +37,11 @@ planar_guard:
     require_deadman: true
     deadman_axis: 3
     deadman_threshold: 0.6
+
+    # Lift (P2.4): ~/lift true raises the tool this far above the latched plane, ramped at
+    # step_limit per cycle (0.08 m takes 0.32 s), so the manager can home and teleport the T
+    # without touching it. The T is 30 mm tall and the tip sits 10 mm above the table.
+    lift_height: 0.08
 
     # Plan Section 5 limits.
     step_limit: 0.005           # m per 50 Hz cycle

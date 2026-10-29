@@ -12,6 +12,7 @@ data before any robot data exists. Values stay in gym-pusht pixel units (0 to 51
 | ``observation.joints`` (6,) | zeros: gym-pusht has no arm |
 | ``block_pose`` (3,) | zeros: not stored in ``lerobot/pusht`` (``pusht_keypoints`` has it) |
 | ``coverage`` (1,) | ``next.reward`` x 0.95 (exact below 0.95, saturated at 0.95) |
+| ``iou`` (1,) | zeros: not derivable from ``lerobot/pusht`` (the sim and real scorers fill it) |
 
     movensys-convert-gym [--episodes N] [--size 256] [--force]
 """
@@ -52,6 +53,7 @@ def recorder_features(size: int) -> dict:
         },
         "block_pose": {"dtype": "float32", "shape": (3,), "names": ["x", "y", "yaw"]},
         "coverage": {"dtype": "float32", "shape": (1,), "names": None},
+        "iou": {"dtype": "float32", "shape": (1,), "names": None},
     }
 
 
@@ -82,6 +84,7 @@ def convert_frame(item: dict, size: int) -> dict:
         "observation.joints": np.zeros(6, dtype=np.float32),
         "block_pose": np.zeros(3, dtype=np.float32),
         "coverage": np.array([reward * SUCCESS_THRESHOLD], dtype=np.float32),
+        "iou": np.zeros(1, dtype=np.float32),
         "task": TASK,
     }
 

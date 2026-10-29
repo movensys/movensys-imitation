@@ -165,3 +165,97 @@ python -m movensys_imitation_ros.scorer_validation --out results/sim/scorer_vali
 Teleports the T to 20 poses (the goal, 10 within 3 mm and 3 deg of it, 5 at 5 to 30 mm, 4 random
 starts), scores each with both backends and writes the CSV; PASS when every pose is valid and
 within 0.02. Unit tests: `pytest movensys_imitation/tests/test_pusht_scoring.py`.
+
+## Collection (P2.4)
+
+Three venv nodes around the guard: `episode_recorder` samples the observation at exactly 10 Hz
+into a LeRobot dataset, `episode_manager` runs the episode loop, and `pusht_scorer` (P2.3) gives
+the live and the end-of-episode score. `collect.launch.py mode:=sim` starts all four; keys come
+from `collect_keys` in another shell because launched processes have no terminal.
+
+### Dataset
+
+Plan Section 5 schema, as `movensys-convert-gym` writes it (`recorder_features`): the overhead
+crop resized to 256 x 256 (`observation.images.top`, the scorer's calibration crop, so the policy
+image and the pixel scorer share one camera setup), `observation.state` (Link6 x, y from TF, the
+same source as the guard), `action` (the guard's `/pusht/target_guarded` at the tick),
+`observation.joints`, `block_pose` (NaN on the real robot), `coverage` and `iou` (scorer fields
+0 and 1). `observation.state` and `action` are stored in the sheet frame (planning frame minus
+`task.area_center`), the frame of `block_pose`, the goal and the start marks, so the dataset
+does not depend on where the sheet sits in front of the robot; the offset is in the sidecar as
+`sheet_origin_wm` and the replay check adds it back. Timestamps are frame index / fps, so the
+recorder ticks on the node clock (`use_sim_time` in sim) and keeps a timing verdict per
+episode: a tick later than 0.1 s + `tick_tolerance` counts as missed, an image that arrived more
+than `max_image_age` before the tick as stale (arrival on the node clock, not the header stamp:
+Isaac's camera stamps restart independently of `/clock`); either makes `timing_ok` false. The
+dataset is finalized after every episode, so it is readable mid-session and a crash loses at
+most the episode being recorded. Episode metadata the LeRobot tables cannot hold (seed, start pose, home point, operator,
+stop reason, end score, success, time to success, timing, versions) goes to
+`<root>/meta/movensys_episodes.jsonl`, one line per saved episode (`recorder_core.read_sidecar`).
+The dataset is resumed if `<root>/meta/info.json` exists, so sessions append.
+
+### Episode loop
+
+Per episode, with seed `seed_start + k` (collection seeds are 1000 and up):
+
+1. **Reset**: guard source `pose` (the arm holds), `~/lift` up (`lift_height` 0.08 m above the
+   latched plane, ramped at the step limit), home to the `task.yaml` `home_candidates` entry
+   farthest from the T's start footprint (`manager_core.choose_home`, at least
+   `min_home_clearance` from the outline), teleport the T to `sample_start_pose(seed)` (2 mm,
+   1 deg, three tries, then 0.5 s at rest), lower, `lower_settle`.
+2. **Record**: `episode_meta` set on the recorder, guard source back to `teleop_source`
+   (`stick`), recorder `~/start`. Stops on coverage >= 0.95 (`/pusht/score` field 0), on
+   `max_steps` (300 frames) or on `~/stop` / `~/discard`.
+3. **End**: recorder `~/stop`, guard to `pose`, lift up, `/pusht_scorer/score` for the
+   authoritative score (geometric in sim, pixel on the real robot: the lift clears the tip from
+   the T), `manager_core.decide_outcome` (operator discard, timing fault with
+   `discard_on_timing_fault`, failures kept unless `keep_failures` is false), recorder `~/save`
+   or `~/discard`. The tool stays lifted in `pose` source until the next reset.
+
+A fault in any step (timeout, refused service, teleport not reached) ends the run safely:
+recorder discard, guard to `pose`, lift up, state `fault:<why>`; `~/start` runs the next seed.
+
+### Running
+
+```bash
+source env.bash
+colcon build --symlink-install --base-paths movensys_imitation_ros --packages-select movensys_imitation_ros
+source env.bash
+ros2 launch movensys_imitation_ros collect.launch.py mode:=sim operator:=name seed_start:=1000 n_episodes:=10
+python -m movensys_imitation_ros.collect_keys      # s start, x stop+save, d discard, a abort, q
+ros2 topic echo /episode_manager/state             # idle | reset:* | record:<n> | end:* | fault:*
+```
+
+Preconditions as for the guard, except the push height: in sim the launch sets the guard's
+`latch_mode` to `nominal`, so the plane is table + nominal clearance and the tool ramps there
+wherever it was parked (a restart after a fault starts with the tool lifted). On the real robot
+`latch_mode` stays `measured`: park the rod at push height first. `quest_servo_teleop` must not
+be running. The grip is needed only while recording: the manager drops `require_deadman` for
+its own lift, home and lower moves and restores it before switching to the stick
+(`scripted_deadman: true` keeps it throughout). Isaac runs at about 0.55 real time on the lab
+box, and the recorder ticks on the sim clock, so a 300-frame episode takes about 55 s of wall
+time. `auto_start:=true` runs `n_episodes` back to back after the first `s`. Parameters:
+`config/dobot_cr3a/recorder.yaml`.
+
+```bash
+lerobot-dataset-viz --repo-id movensys/pusht_cr3a_sim_v1 --root datasets/movensys/pusht_cr3a_sim_v1 --episode-index 0
+```
+
+### Checks for the done cell
+
+```bash
+python -m movensys_imitation_ros.reset_check --n 10 --out results/sim/reset_check.csv
+python -m movensys_imitation_ros.replay_check --root datasets/movensys/pusht_cr3a_sim_v1 --out results/sim/replay_check.csv
+```
+
+`reset_check` needs only the scene: 10 teleports, each within 2 mm and 1 deg, and no motion
+(0.5 mm, 0.2 deg) between 0.5 s and 1.5 s after it. `replay_check` needs the guard and the
+scorer (the collect launch can stay up; `ros2 param set /planar_guard require_deadman false`
+first, sim only, or hold the grip): for every episode it homes the tip to
+the first `observation.state`, teleports the T to the first `block_pose`, replays the recorded
+`action` sequence as a timed path on `/pusht/waypoints` and compares the end state with the
+recorded one. The plan's "reproduce the final T pose" is made numeric: coverage within 0.05,
+junction within 10 mm, yaw within 5 deg. Exact agreement is not expected: the replayed path is
+the 10 Hz target linearly interpolated, not the original 50 Hz stream, and PhysX contact is not
+bit-reproducible. Unit tests: `pytest movensys_imitation_ros/test` (`test_recorder_core.py`,
+`test_manager_core.py`, the lift ramp in `test_guard_core.py`).

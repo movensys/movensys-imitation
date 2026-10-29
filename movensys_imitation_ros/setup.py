@@ -32,13 +32,17 @@ setup(
         "console_scripts": [
             # Added in plan Phase 2:
             "planar_guard = movensys_imitation_ros.planar_guard:main",
-            # "episode_recorder = movensys_imitation_ros.episode_recorder:main",
-            # "episode_manager = movensys_imitation_ros.episode_manager:main",
-            # The scorer and its tools need the venv (numpy 2, OpenCV, shapely): start them with
-            # python -m movensys_imitation_ros.<module>, see doc/4_sim.md.
+            # The scorer, the recorder, the manager and their tools need the venv (numpy 2,
+            # OpenCV, shapely, LeRobot): start them with python -m movensys_imitation_ros.<module>,
+            # see doc/4_sim.md.
             "pusht_scorer = movensys_imitation_ros.pusht_scorer:main",
             "setup_camera = movensys_imitation_ros.setup_camera:main",
             "scorer_validation = movensys_imitation_ros.scorer_validation:main",
+            "episode_recorder = movensys_imitation_ros.episode_recorder:main",
+            "episode_manager = movensys_imitation_ros.episode_manager:main",
+            "collect_keys = movensys_imitation_ros.collect_keys:main",
+            "replay_check = movensys_imitation_ros.replay_check:main",
+            "reset_check = movensys_imitation_ros.reset_check:main",
             # "policy_runner = movensys_imitation_ros.policy_runner:main",
         ],
     },
