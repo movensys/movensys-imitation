@@ -146,12 +146,16 @@ The axes follow the ROS convention (`spacenav_node` remaps libspnav): 0 x is the
 from / toward the operator, 1 y left/right, 2 z up/down, 3 roll, 4 pitch, 5 yaw. Run
 `spacemouse_probe`, push the puck one way at a time and read which axis moves with which
 sign, then press the key you want as dead-man and read its index; Ctrl-C prints a summary.
-Probe run of 2026-10-29 (SpaceMouse Pro Wireless): a push along the cable axis gave x about
-0.5 together with pitch about 0.8 (a push also tilts the puck, so the guard, which only
-reads x and y, is unaffected, while the free-motion teleop should park in `translation`
-mode); twist gave yaw alone up to 0.98; the chosen side key is index 13. That index is in
-`deadman_button` of `joy_spacemouse.yaml` and `spacemouse_teleop.yaml`. The dead-man is
-held, not toggled: `require_deadman` turns the requirement on and off (sim only off).
+Probe run of 2026-10-30 (SpaceMouse Pro Wireless, cabled, operator facing the cable): a push
+away gave x (axis 0) +0.65 together with pitch (axis 4) +0.85; a push to the right gave y
+(axis 1) -0.50 together with roll (axis 3) +0.88. A push also tilts the puck, so the guard,
+which only reads x and y, is unaffected, while the free-motion teleop should park in
+`translation` mode. A straight push saturates at about 0.5 to 0.7, not 1.0, which the guard's
+`expo` 2.0 squares to 0.25 to 0.45 of `max_speed`; lower `expo` or raise `max_speed` if the
+stick feels slow. The chosen side key is index 13 (the buttons array grew to 15 entries on the
+first press). That index is in `deadman_button` of `joy_spacemouse.yaml` and
+`spacemouse_teleop.yaml`. The dead-man is held, not toggled: `require_deadman` turns the
+requirement on and off (sim only off). The twist (yaw) axis was not probed.
 
 ### Collection with the SpaceMouse
 

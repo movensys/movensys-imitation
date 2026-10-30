@@ -61,10 +61,10 @@ sudo --preserve-env=PATH,AMENT_PREFIX_PATH,COLCON_PREFIX_PATH,PYTHONPATH,LD_LIBR
 
 ## 1.7 3Dconnexion SpaceMouse (branch feature/support-for-3d-spacemouse)
 
-Host state found 2026-10-29: SpaceMouse Pro Wireless on USB (`256f:c631`, cabled), `spacenavd`
-1.2 active and enabled with its socket at `/var/run/spnav.sock`, `libspnav0` installed, the
-user in the `input` group (`/dev/input/js0`, `event25`), and `ros-jazzy-joy` installed.
-Missing: the ROS driver, one apt install with a password:
+Host state before the install (checked 2026-10-30 on `lab`): SpaceMouse Pro Wireless on USB
+(`256f:c631`, cabled) and `ros-jazzy-topic-tools` present; no `spacenavd`, no `libspnav`, no
+ROS driver. One apt install with a password brings all three (the ROS package depends on the
+daemon); the user does not need the `input` group, the daemon grabs the device as root:
 
 ```bash
 sudo apt install ros-jazzy-spacenav
@@ -74,8 +74,11 @@ ros2 launch movensys_imitation_ros spacenav.launch.py      # driver + 60 Hz thro
 ros2 run movensys_imitation_ros spacemouse_probe            # axes and key indices
 ```
 
-Installed 2026-10-29 (`ros-jazzy-spacenav` 3.3.0, pulls `libspnav-dev`); `ros-jazzy-topic-tools`
-was already present.
+Installed 2026-10-30 (`ros-jazzy-spacenav` 3.3.0, `spacenavd` 1.2, `libspnav0` 1.1); the daemon
+came up enabled and active with its socket at `/var/run/spnav.sock`. After the install rebuild the
+package (`colcon build --symlink-install --base-paths movensys_imitation_ros`, doc/4_sim.md) or the
+new launch files are not in `install/`. Verified the same day: `/spacenav/joy_raw` 1000 Hz and
+`/spacenav/joy` 59 Hz with the puck at rest, six zero axes, two button entries.
 
 Notes.
 

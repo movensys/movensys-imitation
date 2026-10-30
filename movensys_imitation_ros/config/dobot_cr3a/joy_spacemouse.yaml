@@ -10,7 +10,8 @@ planar_guard:
   ros__parameters:
     joy_topic: /spacenav/joy
     # Puck push: axis 0 is away/toward the operator, axis 1 is left/right (probe run,
-    # 2026-10-29: a push along the cable axis moved axis 0 together with pitch, axis 4). The
+    # 2026-10-30: push away gave axis 0 +0.65 with pitch +0.85; push right gave axis 1 -0.50
+    # with roll +0.88; a straight push saturates near 0.5 to 0.7, not 1.0). The
     # guard reads the stick as (right, forward) like a thumbstick, so the pair is [1, 0] and x is
     # inverted because ROS y is positive to the left. Calibrate once from the operator's position
     # (doc/4_sim.md, "SpaceMouse"): with the puck pushed away, the tip must move away from you;
@@ -24,7 +25,8 @@ planar_guard:
     expo: 2.0
     # Dead-man: hold a side key with the free hand while the other drives the puck. The index
     # is spacenavd's button number: 13 is the key chosen with spacemouse_probe on the SpaceMouse
-    # Pro Wireless (2026-10-29); re-run the probe to pick another.
+    # Pro Wireless (confirmed 2026-10-30; buttons array has 15 entries); re-run the probe to
+    # pick another.
     # require_deadman (guard.yaml) turns the dead-man on and off.
     deadman_axis: -1
     deadman_button: 13
