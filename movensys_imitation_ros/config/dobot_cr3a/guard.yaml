@@ -33,7 +33,7 @@ planar_guard:
     stick_invert_y: false
     deadzone: 0.15
     expo: 2.0
-    max_speed: 0.12             # m/s at full deflection; the step limit caps at 0.25 m/s
+    max_speed: 0.20            # m/s at full deflection; the step limit caps at 0.25 m/s
 
     # Dead-man: analog grip (axes[3]) above the threshold, or a held button when
     # deadman_button >= 0 (SpaceMouse side key, joy_spacemouse.yaml). require_deadman turns it

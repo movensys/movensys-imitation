@@ -74,5 +74,20 @@ ros2 launch movensys_imitation_ros guard.launch.py mode:=sim device:=spacemouse 
 source /opt/ros/jazzy/setup.bash
 ros2 run rqt_image_view rqt_image_view /image_hand/rgb
 
+rqt 
+and load default perscpective
+
+python3 - <<'EOF'
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import Float32MultiArray
+rclpy.init()
+n = Node("coverage_watch")
+n.create_subscription(Float32MultiArray, "/pusht/score",
+    lambda m: print(f"coverage {m.data[0]:.3f}  success {int(m.data[2])}", flush=True), 10)
+rclpy.spin(n)
+EOF
+
+
 
 
