@@ -58,3 +58,34 @@ sudo --preserve-env=PATH,AMENT_PREFIX_PATH,COLCON_PREFIX_PATH,PYTHONPATH,LD_LIBR
   bash -c "source /opt/ros/jazzy/setup.bash && source ~/workspaces/movensys_ws/install/setup.bash && \
            ros2 launch wmx_r2_package wmx_r2_cr3a_manipulator.launch.py"
 ```
+
+## 1.7 3Dconnexion SpaceMouse (branch feature/support-for-3d-spacemouse)
+
+Host state before the install (checked 2026-10-30 on `lab`): SpaceMouse Pro Wireless on USB
+(`256f:c631`, cabled) and `ros-jazzy-topic-tools` present; no `spacenavd`, no `libspnav`, no
+ROS driver. One apt install with a password brings all three (the ROS package depends on the
+daemon); the user does not need the `input` group, the daemon grabs the device as root:
+
+```bash
+sudo apt install ros-jazzy-spacenav
+systemctl is-active spacenavd            # active; else: sudo systemctl enable --now spacenavd
+python3 -c "import ctypes; l = ctypes.CDLL('libspnav.so.0'); print(l.spnav_open())"   # 0 = daemon reachable
+ros2 launch movensys_imitation_ros spacenav.launch.py      # driver + 60 Hz throttle (topic_tools)
+ros2 run movensys_imitation_ros spacemouse_probe            # axes and key indices
+```
+
+Installed 2026-10-30 (`ros-jazzy-spacenav` 3.3.0, `spacenavd` 1.2, `libspnav0` 1.1); the daemon
+came up enabled and active with its socket at `/var/run/spnav.sock`. After the install rebuild the
+package (`colcon build --symlink-install --base-paths movensys_imitation_ros`, doc/4_sim.md) or the
+new launch files are not in `install/`. Verified the same day: `/spacenav/joy_raw` 1000 Hz and
+`/spacenav/joy` 59 Hz with the puck at rest, six zero axes, two button entries.
+
+Notes.
+
+- `spacenav_node` talks to `spacenavd`, which grabs the evdev device, so `joy_node` on
+  `/dev/input/js0` is not an alternative while the daemon runs; use the spacenav node.
+- The driver's Joy runs at 1 kHz; the launch throttles it to 60 Hz (`doc/4_sim.md`).
+- Over the wireless receiver the daemon works the same; check `ros2 topic hz /spacenav/joy`
+  for gaps before collecting. The cable is the reference setup.
+- Use and calibration: `doc/4_sim.md`, "SpaceMouse input".
+

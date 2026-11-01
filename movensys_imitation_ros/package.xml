@@ -16,6 +16,8 @@
   <exec_depend>moveit_msgs</exec_depend>
   <exec_depend>nav_msgs</exec_depend>
   <exec_depend>tf2_ros</exec_depend>
+  <!-- 3Dconnexion SpaceMouse driver (spacenav.launch.py); apt ros-jazzy-spacenav, needs spacenavd -->
+  <exec_depend>spacenav</exec_depend>
 
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_xmllint</test_depend>
