@@ -4,9 +4,11 @@ Compare ACT, Diffusion Policy and Flow Matching on PushT with the Dobot CR3A. De
 
 | | |
 |---|---|
-| Version | 2.5, 2026-10-24. v2.3 and v2.4 (same day) resized the push area and the T to fit the arm's reach. v2.2 (2026-10-17) made the T dark blue. v2.1 (2026-10-16) removed all markers. v2.0 (2026-10-13) merged `movensys_imitation_plan.md` (v1.1) and `Simplified_plan.md`; both are archived under `plan/archive/`. |
+| Version | 2.6, 2026-11-02. v2.5 (2026-10-24) widened the push area to 0.60 x 0.30 m. v2.3 and v2.4 (same day) resized the push area and the T to fit the arm's reach. v2.2 (2026-10-17) made the T dark blue. v2.1 (2026-10-16) removed all markers. v2.0 (2026-10-13) merged `movensys_imitation_plan.md` (v1.1) and `Simplified_plan.md`; both are archived under `plan/archive/`. |
 | Host | Ubuntu 24.04, ROS 2 Jazzy, Python 3.12, RTX 5090, Isaac Sim 5.1 (`~/isaac-sim`), WMX3 SDK (`/opt/wmx3`) |
 | Start | 2026-10-13, 10 weeks, one engineer (7 to 8 weeks with a controls engineer **C** and an ML engineer **M** in parallel) |
+
+**Changes in v2.6 (2026-11-02):** the pusher tip goes from 20 mm to **30 mm** diameter, one T unit, which is the ratio of the agent to the T in Chi et al. 2023 and gym-pusht (radius 15 px against a 30 px unit). `TIP_RADIUS` 0.015 in `build_scene.py`, `make_usd_assets.py` and `manager_core.py`; `scene_9a.json` and `assets/pusher_tip.usd` regenerated; the gripper stops at a 30 mm gap (joint 0.035). The real tip has not been printed, so the change costs nothing on hardware.
 
 **Changes in v2.5 (2026-10-24):** the push area becomes a **0.60 m wide x 0.30 m deep rectangle** (start rectangle 0.36 x 0.18 m), centre world_manipulator (-0.03, -0.05). The arm's reach at push height is a ring around the base, so width is cheap and depth is not: the v2.4 0.36 m square had its far corners at condition number 29, just under Servo's hard stop of 30, while taking 6 cm off the depth allows 0.62 m of width with the corners near 25. The T stays at 30 mm per unit, giving 20 units across and 10 deep. The policy crop becomes a fixed square that contains the sheet, with table strips above and below (T stem about 5 px in the 96 px image, as in gym-pusht). The Jetson box, 0.20 x 0.20 m at (0.36, 0.18) in the 3a scene, overlapped the wide sheet and is parked in the table corner at (0.40, 0.25) in sim; the real Jetson moves the same way and the manipulator URDF has to follow, since MoveIt's collision world still holds the old position. Artwork, sheet spec, scene and scene spec regenerated.
 
@@ -244,7 +246,7 @@ Dataset: episodes collected ___, kept ___, lighting conditions ___, operator ___
 | Parameter | Value (all in `config/dobot_cr3a/task.yaml`) |
 |---|---|
 | Robot | Dobot CR3A, `joint1..joint6`, EEF `Link6`, planning frame `world_manipulator` |
-| Pusher | Printed 20 mm cylinder tip held by the closed gripper; tool axis vertical, fixed yaw, tip bottom 10 mm above the table; only x, y move |
+| Pusher | Printed 30 mm cylinder tip (one T unit, as the agent in Chi et al. 2023) held by the closed gripper; tool axis vertical, fixed yaw, tip bottom 10 mm above the table; only x, y move |
 | Push area | 0.60 m wide x 0.30 m deep rectangle in front of the robot (v2.5; the arm's reach is a ring around the base, so the area is wide, not deep), centre at world_manipulator (-0.03, -0.05); the near edge and the far corners are in Servo's slow-down zone. Jetson box parked in the table corner at (0.40, 0.25), sim and real |
 | T block | gym-pusht proportions at **30 mm per unit** (v2.4): bar 120 x 30 mm, stem 30 x 90 mm, height 30 mm, 150 to 250 g; matte dark blue, RGB (20, 40, 110) (v2.2; gym-pusht's T is grey), **no marker**, same look in sim and real |
 | Target | T outline printed on a white laminated sheet with 30 numbered start marks with orientation; no markers. Outline and marks are thin and coloured so the T mask threshold ignores them |

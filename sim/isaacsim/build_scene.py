@@ -15,7 +15,7 @@ What is added to the 3a scene (robot, table, room, joint-state and clock graphs 
 * ``/World/pusht/target_sheet``         textured quad with the goal outline and start marks
 * ``/World/pusht/t_block``              rigid T (two dark blue boxes, 0.25 kg, friction material)
                                         No markers anywhere (plan v2.1): scoring is pixel-based.
-* ``.../Link6/pusher_tip``              20 mm cylinder along the tool axis, collision enabled
+* ``.../Link6/pusher_tip``              30 mm cylinder along the tool axis, collision enabled
 * ``/World/camera_top_link``            RealSense D455 model looking straight down; the render
                                         camera is the plain ``camera_top`` child: 1280 x 720,
                                         30 Hz on ``/image_top/rgb`` and ``/image_top/camera_info``
@@ -353,14 +353,18 @@ for name, size, centre in (
     bind(cube.GetPrim(), block_phys, "physics")
 
 # Pusher tip under Link6: a cylinder along the tool axis (+z of Link6), protruding past the fingers.
+TIP_RADIUS = 0.015  # 30 mm rod, one gym-pusht T unit, as the paper's agent (plan v2.6)
 tip_top = 0.14  # where the gripper body ends along Link6 +z (from the Link6 visual extent)
 tip_offset = tip_top + args.tip_length  # Link6 origin to tip bottom
 tip = UsdGeom.Cylinder.Define(stage, TIP)
-tip.CreateRadiusAttr(0.010)
+tip.CreateRadiusAttr(TIP_RADIUS)
 tip.CreateHeightAttr(args.tip_length)
 tip.CreateAxisAttr("Z")
 tip.CreateExtentAttr(
-    [Gf.Vec3f(-0.01, -0.01, -args.tip_length / 2), Gf.Vec3f(0.01, 0.01, args.tip_length / 2)]
+    [
+        Gf.Vec3f(-TIP_RADIUS, -TIP_RADIUS, -args.tip_length / 2),
+        Gf.Vec3f(TIP_RADIUS, TIP_RADIUS, args.tip_length / 2),
+    ]
 )
 set_xform(tip.GetPrim(), (0.0, 0.0, tip_top + args.tip_length / 2))
 UsdPhysics.CollisionAPI.Apply(tip.GetPrim())
@@ -663,7 +667,7 @@ meta = {
     "pose_topic": {"topic": "/pusht/t_block/pose", "frame": "sheet", "rate_hz": 30},
     "pusher_tip": {
         "prim": TIP,
-        "radius_m": 0.010,
+        "radius_m": TIP_RADIUS,
         "length_m": args.tip_length,
         "link6_to_tip_bottom_m": tip_offset,
         "eef_z_setpoint_wm": eef_z_wm,

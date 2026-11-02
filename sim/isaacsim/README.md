@@ -65,7 +65,7 @@ default `-0.03 -0.05`), `--jetson-xy X Y` (where the Jetson box goes, default `0
   URDF still places it at (0.36, 0.18), so MoveIt's collision world disagrees with Isaac there
   until `movensys_manipulator.urdf` follows.
 * **Table top**: z = 0.0431 m in `world_manipulator` (measured from the 3a collision mesh).
-* **Pusher tip**: 20 mm cylinder on the `Link6` +z axis from 0.14 to 0.22 m. The tip bottom is
+* **Pusher tip**: 30 mm cylinder on the `Link6` +z axis from 0.14 to 0.22 m. The tip bottom is
   0.22 m from the `Link6` origin, so the guard's z setpoint for a tip 10 mm above the table is
   **0.2731 m** (in `scene_9a.json`).
 * **T block**: gym-pusht proportions at 30 mm per unit (v2.4), 30 mm tall, 0.15 kg, friction 0.40/0.35,

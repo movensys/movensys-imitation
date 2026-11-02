@@ -10,7 +10,7 @@ Writes into ``sim/isaacsim/assets/`` (ASCII-encoded ``.usd`` so diffs stay reada
 
 * ``t_block.usd``      rigid T: gym-pusht proportions at 30 mm per unit, 30 mm tall, 0.15 kg,
                        dark blue (20, 40, 110), friction 0.40/0.35. Default prim ``/t_block``.
-* ``pusher_tip.usd``   20 mm cylinder, collision only (it rides on the link it is parented to).
+* ``pusher_tip.usd``   30 mm cylinder, collision only (it rides on the link it is parented to).
                        Default prim ``/pusher_tip``.
 
 Both carry their materials under ``<root>/Looks`` and have a default prim, so a scene references
@@ -51,7 +51,7 @@ ASSETS = Path(__file__).resolve().parent / "assets"
 
 BLOCK_RGB = (20, 40, 110)  # dark blue T
 TIP_RGB = (0.15, 0.15, 0.18)
-TIP_RADIUS = 0.010
+TIP_RADIUS = 0.015  # 30 mm rod, one gym-pusht T unit (plan v2.6)
 
 
 def new_stage(path: Path, doc: str) -> Usd.Stage:

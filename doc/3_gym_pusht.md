@@ -125,4 +125,4 @@ ros2 service call /wmx/set_gripper std_srvs/srv/SetBool "{data: false}"   # open
 
 
 ```
-Use 0.040 rather than 0.045 to stop at a 20 mm gap, which is the tip diameter. Open again with 0.0. The positions are echoed back on /joint_states.
+Use 0.035 rather than 0.045 to stop at a 30 mm gap, which is the tip diameter (0.040 gave the 20 mm gap of the old tip). Open again with 0.0. The positions are echoed back on /joint_states.

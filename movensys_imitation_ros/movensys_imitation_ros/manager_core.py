@@ -17,7 +17,7 @@ from shapely.geometry import Point
 from movensys_imitation.tasks.pusht import geometry as g
 from movensys_imitation.tasks.pusht import scoring as sc
 
-TIP_RADIUS = 0.010
+TIP_RADIUS = 0.015  # 30 mm rod (plan v2.6)
 HOME_CANDIDATES = ((-0.03, 0.08), (-0.25, 0.08), (0.19, 0.08))
 """Default parking points (task.yaml ``home_candidates``), near the robot inside the push area."""
 

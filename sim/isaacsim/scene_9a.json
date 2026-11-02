@@ -69,7 +69,7 @@
   },
   "pusher_tip": {
     "prim": "/World/movensys_manipulator/Link6/pusher_tip",
-    "radius_m": 0.01,
+    "radius_m": 0.015,
     "length_m": 0.08,
     "link6_to_tip_bottom_m": 0.22000000000000003,
     "eef_z_setpoint_wm": 0.2731200915781034,
