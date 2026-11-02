@@ -64,10 +64,16 @@ Controller Web ui will be available at this location:
 https://192.168.0.20:48322/client/?codec=h264&maxStreamingBitrateMbps=80&perEyeWidth=1024&perEyeHeight=1024&deviceFrameRate=72#/real/gear/headless
 
 ## SpaceMouse teleoperation (3Dconnexion)
-ros2 launch movensys_imitation_ros guard.launch.py mode:=sim device:=spacemouse driver:=false \
-  --ros-args -p require_deadman:=false
+```
+ros2 launch movensys_imitation_ros guard.launch.py mode:=sim device:=spacemouse driver:=false
+```
 
-  ros2 param set /planar_guard require_deadman false
+`require_deadman` is not a launch argument (`ros2 launch` takes only `name:=value` pairs, no
+`--ros-args -p`). To drop the dead-man grip in sim, set it at runtime from a second terminal
+once the guard is up:
+```
+ros2 param set /planar_guard require_deadman false
+```
 
 
 ## Feed for image hand camera

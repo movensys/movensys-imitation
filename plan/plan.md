@@ -50,6 +50,7 @@ Phase 2  Isaac Sim          PushT scene, teleop, recorder, runner, sim evaluatio
 Phase 3  Hardware-in-loop   WMX simu platform drives Isaac Sim through WMX-R2        M3
 Phase 4  Real CR3A          real demos, training, 30 trials per policy               M4
 Phase 5  Results            tables, failure taxonomy, docs                           M5
+Phase 6  Dataset variants   start-state, replay and visual randomization, v2 datasets   M6 (later)
 ```
 
 Each stage reuses the previous stage's code. Autonomous hardware runs start only after the streaming controller, soft limits, E-stop, watchdog and low-speed motion are verified (Phase 4 checklist).
@@ -66,6 +67,7 @@ Update at every review. Status: `Not started`, `In progress`, `Blocked`, `Done`.
 | M3 | Policy episode through WMX-R2 on the simu platform, controller merged | 6 (Nov 17 to 21) | Not started | |
 | M4 | Real-robot evaluation, 30 trials x 3 policies | 9 (Dec 8 to 12) | Not started | |
 | M5 | Results document, videos, setup docs | 10 (Dec 15 to 19) | Not started | |
+| M6 | Dataset variants (Phase 6): v2 sim dataset compared with v1 on the 50 evaluation seeds | Later, after M5 | Not started | |
 
 | Week | Dates | Focus |
 |---|---|---|
@@ -176,6 +178,22 @@ Goal: real demonstrations, real training, real evaluation.
 | P5.4 | Final pass on `doc/1_setup.md` to `doc/6_real.md`. | C | Reproduction by a second engineer | |
 
 Optional, only after M4, in this order: action horizon 16/8 vs 32/16; observation history 1 vs 2; LeRobot real-time chunking on the Flow Matching policy; DiT flow-matching baseline (`multi_task_dit`, 1 seed); wrist camera on or off.
+
+### Phase 6: dataset variants (later, after M5)
+
+Goal: raise policy performance and sim-to-real robustness by varying the sim dataset, not the policies. Every variant is a separate dataset id (`movensys/pusht_cr3a_sim_v2` and up), trained with the frozen configs and evaluated on the same 50 start states (seeds 0 to 49) so it compares directly with `v1` in Table R2. Added 2026-11-03.
+
+| ID | Task | Owner | Done when | Status |
+|---|---|---|---|---|
+| P6.1 | Training-time augmentation first (cheapest): colour jitter and small affine jitter on top of the existing random 84 x 84 crop, in the LeRobot training config. One seed per policy on `v1`. | M | Table R2 row with and without augmentation | |
+| P6.2 | More start-state coverage: extend collection on seeds 1200 and up to 300 to 400 episodes; `sample_start_pose` unchanged. | C | `movensys/pusht_cr3a_sim_v2` with stats | |
+| P6.3 | Hard-start subset: a sampler variant in `geometry.py` biased to large yaw error and the corners of the inner rectangle (collection seeds only; evaluation seeds 0 to 49 untouched). 50 to 100 episodes. | C | `movensys/pusht_cr3a_sim_v2_hard` | |
+| P6.4 | Replay-based regeneration: replay a recorded episode's actions through the guard from a perturbed T start pose (a few mm, a few degrees); keep the episode only if coverage reaches 0.95. Builds on `replay_check`. | C | Acceptance rate per perturbation size logged; `movensys/pusht_cr3a_sim_v2_replay` | |
+| P6.5 | Per-episode visual randomization with Replicator (`omni.replicator`) triggered at reset: dome light intensity and colour temperature, sheet texture brightness, T shade within the scorer's colour thresholds, overhead camera pose jitter of a few mm and degrees. The scorer must still pass the P2.3 validation on every randomized frame. | C | `movensys/pusht_cr3a_sim_v2_dr`; scorer validation CSV | |
+| P6.6 | Mirror augmentation: reflect image, T pose, goal pose and the x action; build the mirrored goal mask with `setup_camera.py`. Offline conversion, no collection. | M | Mirrored dataset passes the replay check on 10 episodes | |
+| P6.7 | Train the three policies, 3 seeds, on each variant kept; evaluate on the 50 evaluation seeds. Report which variant helps and whether it transfers to the real robot (M4 checkpoints as the baseline). | M | Table R2 extended with one row per variant | |
+
+Not planned: the Isaac Sim Synthetic Data Recorder (perception datasets, not episodes) and Isaac Lab Mimic (needs the task ported to an Isaac Lab environment with its own controller; reconsider only if real collection in Phase 4 is the bottleneck).
 
 ---
 
@@ -311,7 +329,7 @@ movensys-imitation/
 └── plan/                        this file
 ```
 
-`datasets/` and `outputs/` are ignored. Dataset ids: `movensys/pusht_gym`, `movensys/pusht_cr3a_sim_v1`, `movensys/pusht_cr3a_real_v1`.
+`datasets/` and `outputs/` are ignored. Dataset ids: `movensys/pusht_gym`, `movensys/pusht_cr3a_sim_v1`, `movensys/pusht_cr3a_real_v1`; Phase 6 variants are `movensys/pusht_cr3a_sim_v2*`.
 
 ---
 
