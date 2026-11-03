@@ -30,7 +30,7 @@ episode_manager:
     seed_start: 1000            # collection seeds are 1000 and up (plan Section 5)
     n_episodes: 10              # with auto_start; 0 = until ~/abort
     auto_start: false           # true: after the first ~/start, run n_episodes back to back
-    success_threshold: 0.80         # was 0.95 (gym-pusht); lowered 2026-11-03 to keep partial pushes as successes
+    success_threshold: 0.80         # project definition (scoring.SUCCESS_THRESHOLD); keep the two equal
     max_steps: 300              # frames at fps (30 s), as gym-pusht
     min_home_clearance: 0.04    # m between the tip edge and the T outline at the home point
     discard_on_timing_fault: true

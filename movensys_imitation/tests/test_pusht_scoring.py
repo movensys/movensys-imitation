@@ -57,7 +57,7 @@ def test_geometric_half_turn_about_the_junction():
 def test_geometric_is_symmetric_and_threshold_distance():
     a, b = offset(GOAL, 0.004, -0.002, 0.03), GOAL
     assert sc.geometric_score(a, b).coverage == pytest.approx(sc.geometric_score(b, a).coverage)
-    # The 0.95 threshold is about 3 mm of pure translation across the bar's length.
+    # A 0.95 coverage is about 3 mm of pure translation across the bar's length.
     along = sc.geometric_score(offset(GOAL, 0.003 * math.cos(GOAL[2]), 0.003 * math.sin(GOAL[2])))
     assert 0.93 < along.coverage < 0.96
 
@@ -202,7 +202,8 @@ def test_decode_image_handles_step_padding_and_bgr():
 
 
 def test_score_dict_and_success_rule():
-    s = sc.Score(0.95, 0.9)
+    thr = sc.SUCCESS_THRESHOLD
+    s = sc.Score(thr, 0.9)
     assert s.success and sc.score_as_dict(s)["success"]
-    assert not sc.Score(0.95, 0.9, valid=False).success
-    assert not sc.Score(0.949, 0.9).success
+    assert not sc.Score(thr, 0.9, valid=False).success
+    assert not sc.Score(thr - 0.001, 0.9).success

@@ -237,7 +237,8 @@ height from the home pose with `spacemouse_teleop` alone, the floor holds the ti
 
 ## Scorer (P2.3)
 
-Coverage is `area(T ∩ goal) / area(goal)` as in gym-pusht, success at 0.95; IoU is reported
+Coverage is `area(T ∩ goal) / area(goal)` as in gym-pusht, success at 0.80 (the project
+definition since 2026-11-03, `scoring.SUCCESS_THRESHOLD`; gym-pusht itself uses 0.95); IoU is reported
 next to it (the paper's metric). Two backends, both in
 `movensys_imitation/tasks/pusht/scoring.py` (no ROS, unit-tested against hand-computed cases and
 synthetic overhead frames):
@@ -337,7 +338,7 @@ Per episode, with seed `seed_start + k` (collection seeds are 1000 and up):
    `min_home_clearance` from the outline), teleport the T to `sample_start_pose(seed)` (2 mm,
    1 deg, three tries, then 0.5 s at rest), lower, `lower_settle`.
 2. **Record**: `episode_meta` set on the recorder, guard source back to `teleop_source`
-   (`stick`), recorder `~/start`. Stops on coverage >= 0.95 (`/pusht/score` field 0), on
+   (`stick`), recorder `~/start`. Stops on coverage >= 0.80 (`/pusht/score` field 0), on
    `max_steps` (300 frames) or on `~/stop` / `~/discard`.
 3. **End**: recorder `~/stop`, guard to `pose`, lift up, `/pusht_scorer/score` for the
    authoritative score (geometric in sim, pixel on the real robot: the lift clears the tip from
