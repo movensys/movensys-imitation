@@ -86,8 +86,9 @@ class DriverError(RuntimeError):
 class Driver(Node):
     """Blocking helpers over the guard, the scene, the scorer and the recorder."""
 
-    def __init__(self, name: str = "episode_manager") -> None:
-        super().__init__(name)
+    def __init__(self, name: str = "episode_manager", **node_kwargs) -> None:
+        """``node_kwargs`` go to ``rclpy.Node`` (the checks pass ``use_sim_time`` this way)."""
+        super().__init__(name, **node_kwargs)
         p = self._declare_driver_parameters()
         self.planning_frame: str = p["task.planning_frame"]
         self.eef_frame: str = p["task.eef_frame"]
@@ -143,9 +144,11 @@ class Driver(Node):
     def _on_score(self, msg: Float32MultiArray) -> None:
         if msg.data:
             self.coverage = float(msg.data[0])
-            self.success_samples = mc.success_run(
-                self.success_samples, self.coverage, self.cfg.success_threshold
-            )
+            cfg = getattr(self, "cfg", None)  # the manager's stop rule; plain Drivers only read
+            if cfg is not None:
+                self.success_samples = mc.success_run(
+                    self.success_samples, self.coverage, cfg.success_threshold
+                )
 
     def _on_lift(self, msg: String) -> None:
         self.lift_state = msg.data

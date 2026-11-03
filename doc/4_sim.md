@@ -377,7 +377,7 @@ time. `auto_start:=true` runs `n_episodes` back to back after the first `s`. Par
 `config/dobot_cr3a/recorder.yaml`.
 
 ```bash
-lerobot-dataset-viz --repo-id movensys/pusht_cr3a_sim_v1 --root datasets/movensys/pusht_cr3a_sim_v1 --episode-index 0
+HF_HUB_OFFLINE=1 lerobot-dataset-viz --repo-id movensys/pusht_cr3a_sim_v1 --root datasets/movensys/pusht_cr3a_sim_v1 --episode-index 0
 ```
 
 ### Checks for the done cell
