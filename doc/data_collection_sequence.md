@@ -44,7 +44,6 @@ ros2 service call /wmx/moveit2/absolute_base_eef_joint_movement \
 
 ## Episode collection
 
-ros2 launch movensys_imitation_ros collect.launch.py mode:=sim operator:=mali n_episodes:=1
 
 With the SpaceMouse as the stick (starts spacenav_node too; hold the dead-man key to move):
 
@@ -93,6 +92,9 @@ n.create_subscription(Float32MultiArray, "/pusht/score",
     lambda m: print(f"coverage {m.data[0]:.3f}  success {int(m.data[2])}", flush=True), 10)
 rclpy.spin(n)
 EOF
+
+
+ros2 launch movensys_imitation_ros scorer.launch.py mode:=sim
 
 
 
