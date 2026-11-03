@@ -237,7 +237,8 @@ height from the home pose with `spacemouse_teleop` alone, the floor holds the ti
 
 ## Scorer (P2.3)
 
-Coverage is `area(T ∩ goal) / area(goal)` as in gym-pusht, success at 0.95; IoU is reported
+Coverage is `area(T ∩ goal) / area(goal)` as in gym-pusht, success at 0.80 (the project
+definition since 2026-11-03, `scoring.SUCCESS_THRESHOLD`; gym-pusht itself uses 0.95); IoU is reported
 next to it (the paper's metric). Two backends, both in
 `movensys_imitation/tasks/pusht/scoring.py` (no ROS, unit-tested against hand-computed cases and
 synthetic overhead frames):
@@ -329,7 +330,10 @@ The dataset is resumed if `<root>/meta/info.json` exists, so sessions append.
 
 ### Episode loop
 
-Per episode, with seed `seed_start + k` (collection seeds are 1000 and up):
+Per episode, with seed `seed_start + k` (collection seeds are 1000 and up). The counter only
+lives in memory, so by default (`seed_start` negative) the manager reads the sidecar at the
+first `~/start` and continues one past the largest seed recorded there, 1000 for a new dataset;
+sessions then append without repeating start poses. Pass `seed_start:=<n>` to start elsewhere.
 
 1. **Reset**: guard source `pose` (the arm holds), `~/lift` up (`lift_height` 0.08 m above the
    latched plane, ramped at the step limit), home to the `task.yaml` `home_candidates` entry
@@ -337,8 +341,10 @@ Per episode, with seed `seed_start + k` (collection seeds are 1000 and up):
    `min_home_clearance` from the outline), teleport the T to `sample_start_pose(seed)` (2 mm,
    1 deg, three tries, then 0.5 s at rest), lower, `lower_settle`.
 2. **Record**: `episode_meta` set on the recorder, guard source back to `teleop_source`
-   (`stick`), recorder `~/start`. Stops on coverage >= 0.95 (`/pusht/score` field 0), on
-   `max_steps` (300 frames) or on `~/stop` / `~/discard`.
+   (`stick`), recorder `~/start`. Stops once coverage >= 0.80 (`/pusht/score` field 0) has
+   held for `success_hold` consecutive samples (5, i.e. 0.5 s at the scorer's 10 Hz: a T still
+   sliding through the goal does not end the episode), on `max_steps` (300 frames) or on
+   `~/stop` / `~/discard`.
 3. **End**: recorder `~/stop`, guard to `pose`, lift up, `/pusht_scorer/score` for the
    authoritative score (geometric in sim, pixel on the real robot: the lift clears the tip from
    the T), `manager_core.decide_outcome` (operator discard, timing fault with
@@ -354,7 +360,7 @@ recorder discard, guard to `pose`, lift up, state `fault:<why>`; `~/start` runs 
 source env.bash
 colcon build --symlink-install --base-paths movensys_imitation_ros --packages-select movensys_imitation_ros
 source env.bash
-ros2 launch movensys_imitation_ros collect.launch.py mode:=sim operator:=name seed_start:=1000 n_episodes:=10
+ros2 launch movensys_imitation_ros collect.launch.py mode:=sim operator:=name n_episodes:=10   # seed_start:=<n> to override
 python -m movensys_imitation_ros.collect_keys      # s start, x stop+save, d discard, a abort, q
 ros2 topic echo /episode_manager/state             # idle | reset:* | record:<n> | end:* | fault:*
 ```
@@ -371,7 +377,7 @@ time. `auto_start:=true` runs `n_episodes` back to back after the first `s`. Par
 `config/dobot_cr3a/recorder.yaml`.
 
 ```bash
-lerobot-dataset-viz --repo-id movensys/pusht_cr3a_sim_v1 --root datasets/movensys/pusht_cr3a_sim_v1 --episode-index 0
+HF_HUB_OFFLINE=1 lerobot-dataset-viz --repo-id movensys/pusht_cr3a_sim_v1 --root datasets/movensys/pusht_cr3a_sim_v1 --episode-index 0
 ```
 
 ### Checks for the done cell

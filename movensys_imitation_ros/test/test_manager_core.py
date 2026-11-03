@@ -57,19 +57,42 @@ def test_choose_home_raises_when_blocked():
 
 
 @pytest.mark.parametrize(
-    "coverage, n, stop, discard, expected",
+    "samples, n, stop, discard, expected",
     [
-        (0.3, 10, False, False, None),
-        (math.nan, 10, False, False, None),
-        (0.95, 10, False, False, mc.REASON_SUCCESS),
-        (0.3, 300, False, False, mc.REASON_MAX_STEPS),
-        (0.3, 299, False, False, None),
-        (0.99, 300, True, False, mc.REASON_STOP),
-        (0.99, 300, True, True, mc.REASON_DISCARD),
+        (0, 10, False, False, None),
+        (CFG.success_hold - 1, 10, False, False, None),  # crossed, not held long enough
+        (CFG.success_hold, 10, False, False, mc.REASON_SUCCESS),
+        (0, 300, False, False, mc.REASON_MAX_STEPS),
+        (0, 299, False, False, None),
+        (99, 300, True, False, mc.REASON_STOP),
+        (99, 300, True, True, mc.REASON_DISCARD),
     ],
 )
-def test_stop_reason(coverage, n, stop, discard, expected):
-    assert mc.stop_reason(coverage, n, CFG, stop, discard) == expected
+def test_stop_reason(samples, n, stop, discard, expected):
+    assert mc.stop_reason(samples, n, CFG, stop, discard) == expected
+
+
+def test_success_run_counts_consecutive_samples_only():
+    thr = CFG.success_threshold
+    run = 0
+    for cov in (thr - 0.01, thr, thr + 0.1, math.nan, thr, thr, thr):
+        run = mc.success_run(run, cov, thr)
+    assert run == 3  # the NaN broke the first run of two
+    assert mc.success_run(5, thr - 1e-6, thr) == 0
+
+
+def test_stop_rule_needs_the_hold():
+    """A transient crossing (episode 2 of 2026-11-03) must not end the episode."""
+    thr = CFG.success_threshold
+    run = 0
+    for cov in (0.31, 0.49, 0.62, thr + 0.02, 0.66):  # T slides through the goal and out
+        run = mc.success_run(run, cov, thr)
+        assert mc.stop_reason(run, 10, CFG) is None
+    for _ in range(CFG.success_hold):
+        run = mc.success_run(run, thr + 0.05, thr)
+    assert mc.stop_reason(run, 10, CFG) == mc.REASON_SUCCESS
+    assert mc.stop_reason(1, 10, mc.ManagerConfig(success_hold=1)) == mc.REASON_SUCCESS
+    assert mc.stop_reason(1, 10, mc.ManagerConfig(success_hold=0)) == mc.REASON_SUCCESS
 
 
 SCORE = {"primary": "geometric", "geometric": {"coverage": 0.97, "iou": 0.9, "valid": True},
@@ -103,6 +126,13 @@ def test_path_from_actions_is_timed_at_fps():
     path = mc.path_from_actions([(0.0, 0.0), (0.1, 0.0), (0.2, 0.1)], 100.0, 10)
     assert [p[0] for p in path] == pytest.approx([100.0, 100.1, 100.2])
     assert path[2][1:] == (0.2, 0.1)
+
+
+def test_next_seed_continues_past_the_sidecar():
+    assert mc.next_seed([]) == 1000
+    assert mc.next_seed([], first=1200) == 1200
+    lines = [{"seed": 1000}, {"seed": 1000}, {"seed": 1003}, {"seed": 1001}, {"operator": "x"}]
+    assert mc.next_seed(lines) == 1004  # largest, not last: a retried seed does not step back
 
 
 def test_pose_difference_wraps_yaw():

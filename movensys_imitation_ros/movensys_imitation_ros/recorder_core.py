@@ -16,6 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 import math
+import os
 from pathlib import Path
 import shutil
 import time
@@ -110,6 +111,9 @@ class Timing:
     stale_frames: int = 0
     max_image_age: float = 0.0
     first_success_frame: int = -1
+    """First frame of the run of frames at or above the success threshold that lasts to the end
+    of the episode, -1 when the last frame is below it. A crossing the T slides back out of does
+    not count, matching the manager's hold rule and the end score that decides success."""
 
     def ok(self) -> bool:
         return self.missed_ticks == 0 and self.stale_frames == 0
@@ -158,8 +162,11 @@ class EpisodeBuffer:
         if age > cfg.max_image_age:
             tm.stale_frames += 1
         frame = build_frame(s, self.cal, cfg)
-        if tm.first_success_frame < 0 and s.coverage >= cfg.success_threshold:
-            tm.first_success_frame = len(self.frames)
+        if s.coverage >= cfg.success_threshold:
+            if tm.first_success_frame < 0:
+                tm.first_success_frame = len(self.frames)
+        else:
+            tm.first_success_frame = -1  # NaN or below: the run is broken
         self.frames.append(frame)
         tm.n_frames = len(self.frames)
         return frame
@@ -274,6 +281,15 @@ class EpisodeStore:
         if self.dataset is not None:
             self.dataset.finalize()
             self.dataset = None
+
+
+def resolve_root(root: str) -> Path:
+    """Relative dataset roots are taken from the repo root (env.bash exports it), else the cwd."""
+    p = Path(root).expanduser()
+    if p.is_absolute():
+        return p
+    base = os.environ.get("MOVENSYS_IMITATION_ROOT")
+    return (Path(base) if base else Path.cwd()) / p
 
 
 def read_sidecar(root: Path) -> list[dict]:

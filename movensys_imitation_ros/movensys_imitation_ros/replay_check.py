@@ -6,7 +6,8 @@ For each episode of a recorded dataset: lift, home the tip to the episode's firs
 recorded 10 Hz ``action`` sequence as a timed path on ``/pusht/waypoints`` (guard in ``pose``
 source) and compare the T pose and coverage at the end with the recorded ones. The guard's
 dead-man applies: ``ros2 param set /planar_guard require_deadman false`` for this check (sim
-only) or hold the grip.
+only) or hold the grip. The driver runs on ``/clock`` like the guard in sim; pass
+``--wall-clock`` on the real robot.
 Run from the venv with the scene playing, the guard and the scorer up::
 
     python -m movensys_imitation_ros.replay_check --root datasets/movensys/pusht_cr3a_sim_v1 \
@@ -28,6 +29,7 @@ import time
 
 import numpy as np
 import rclpy
+from rclpy.parameter import Parameter
 
 from movensys_imitation_ros import manager_core as mc
 from movensys_imitation_ros.episode_manager import (
@@ -112,6 +114,12 @@ def main(argv=None) -> int:
     ap.add_argument("--tol-yaw-deg", type=float, default=5.0)
     ap.add_argument("--settle", type=float, default=1.0)
     ap.add_argument(
+        "--wall-clock", action="store_true",
+        help="real robot: the guard runs on the wall clock (default: /clock, as the guard in "
+        "sim; a wall-clock path is in the far future for a sim-time guard, which then holds "
+        "the first waypoint forever, seen 2026-11-03)",
+    )
+    ap.add_argument(
         "--area-center", type=float, nargs=2, default=(-0.03, -0.05),
         help="sheet origin in the planning frame when the sidecar does not record it",
     )
@@ -128,7 +136,10 @@ def main(argv=None) -> int:
         ep["origin"] = (float(origin[0]), float(origin[1]))
 
     rclpy.init()
-    drv = Driver("replay_check")
+    drv = Driver(
+        "replay_check",
+        parameter_overrides=[Parameter("use_sim_time", value=not args.wall_clock)],
+    )
     spinner = spin_in_background(drv)
     rows = []
     try:

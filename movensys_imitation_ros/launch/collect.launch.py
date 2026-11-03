@@ -79,7 +79,10 @@ def generate_launch_description():
                 ])),
             ),
             DeclareLaunchArgument("operator", default_value="", description="sidecar metadata"),
-            DeclareLaunchArgument("seed_start", default_value="1000"),
+            DeclareLaunchArgument(
+                "seed_start", default_value="-1",
+                description="< 0: continue after the last seed in the dataset sidecar",
+            ),
             DeclareLaunchArgument("n_episodes", default_value="10"),
             DeclareLaunchArgument("auto_start", default_value="false"),
             Node(

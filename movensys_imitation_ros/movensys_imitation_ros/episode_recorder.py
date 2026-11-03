@@ -34,7 +34,6 @@ from __future__ import annotations
 
 import json
 import math
-import os
 from pathlib import Path
 import time
 
@@ -53,15 +52,6 @@ from movensys_imitation_ros import recorder_core as rc
 from movensys_imitation_ros.pusht_scorer import default_calibration_dir, pose_to_tuple
 
 
-def resolve_root(root: str) -> Path:
-    """Relative dataset roots are taken from the repo root (env.bash exports it), else the cwd."""
-    p = Path(root).expanduser()
-    if p.is_absolute():
-        return p
-    base = os.environ.get("MOVENSYS_IMITATION_ROOT")
-    return (Path(base) if base else Path.cwd()) / p
-
-
 class EpisodeRecorder(Node):
     """See the module docstring."""
 
@@ -70,7 +60,7 @@ class EpisodeRecorder(Node):
         p = self._declare_parameters()
         self.cfg = rc.RecorderConfig(
             repo_id=p["repo_id"],
-            root=resolve_root(p["root"]),
+            root=rc.resolve_root(p["root"]),
             fps=int(p["fps"]),
             image_size=int(p["image_size"]),
             robot_type=p["robot_type"],

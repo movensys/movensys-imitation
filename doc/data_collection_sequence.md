@@ -25,17 +25,9 @@ manipulator container (`mros` opens a shell there; the `movensys_manipulator_mov
 service types are not installed on the host, so the host shell answers "The passed service type
 is invalid"):
 
+
 ```
 mros
-ros2 service call /wmx/moveit2/joint_movement \
-  movensys_manipulator_moveit_config/srv/MoveJoints \
-  "{joint_names: [joint1, joint2, joint3, joint4, joint5, joint6],
-    joint_values: [0.1511, 0.0239, -1.8702, 0.2709, 1.5685, 0.1512]}"
-```
-
-or
-
-```
 ros2 service call /wmx/moveit2/absolute_base_eef_joint_movement \
   movensys_manipulator_moveit_config/srv/MovePose \
   "{pos: [-0.107, -0.071, 0.284], ori: [3.137, -0.003, -3.141]}"
@@ -44,7 +36,6 @@ ros2 service call /wmx/moveit2/absolute_base_eef_joint_movement \
 
 ## Episode collection
 
-ros2 launch movensys_imitation_ros collect.launch.py mode:=sim operator:=mali n_episodes:=1
 
 With the SpaceMouse as the stick (starts spacenav_node too; hold the dead-man key to move):
 
@@ -64,15 +55,99 @@ Controller Web ui will be available at this location:
 https://192.168.0.20:48322/client/?codec=h264&maxStreamingBitrateMbps=80&perEyeWidth=1024&perEyeHeight=1024&deviceFrameRate=72#/real/gear/headless
 
 ## SpaceMouse teleoperation (3Dconnexion)
-ros2 launch movensys_imitation_ros guard.launch.py mode:=sim device:=spacemouse driver:=false \
-  --ros-args -p require_deadman:=false
+```
+ros2 launch movensys_imitation_ros guard.launch.py mode:=sim device:=spacemouse driver:=false
+```
 
-  ros2 param set /planar_guard require_deadman false
+`require_deadman` is not a launch argument (`ros2 launch` takes only `name:=value` pairs, no
+`--ros-args -p`). To drop the dead-man grip in sim, set it at runtime from a second terminal
+once the guard is up:
+```
+ros2 param set /planar_guard require_deadman false
+```
 
 
 ## Feed for image hand camera
 source /opt/ros/jazzy/setup.bash
 ros2 run rqt_image_view rqt_image_view /image_hand/rgb
 
+rqt 
+and load default perscpective
+
+python3 - <<'EOF'
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import Float32MultiArray
+rclpy.init()
+n = Node("coverage_watch")
+n.create_subscription(Float32MultiArray, "/pusht/score",
+    lambda m: print(f"coverage {m.data[0]:.3f}  success {int(m.data[2])}", flush=True), 10)
+rclpy.spin(n)
+EOF
 
 
+ros2 launch movensys_imitation_ros scorer.launch.py mode:=sim
+
+
+
+
+
+
+## Replay a saved episode
+
+Two ways. The dataset holds the top camera only (`observation.images.top`), plus state, action,
+joints, T pose and coverage; the hand camera is not recorded, so both feeds are only available
+in the live replay (B). The top camera is being moved to an oblique view (decided 2026-11-03,
+after measuring that the straight-down view loses the T behind the forearm for most of each
+push); episodes recorded before and after that change must not share a dataset root.
+
+### A. Offline viewer: what was recorded
+
+```
+HF_HUB_OFFLINE=1 lerobot-dataset-viz --repo-id movensys/pusht_cr3a_sim_v1 \
+  --root datasets/movensys/pusht_cr3a_sim_v1 --episode-index 0
+```
+
+Opens a rerun window: the top-camera video, `observation.state` (tip x, y), `action`, the joints,
+`block_pose` and `coverage` per frame, with a time cursor. `--save 1 --output-dir <dir>` writes
+an `.rrd` file instead of opening the window. Episode indices are in
+`datasets/movensys/pusht_cr3a_sim_v1/meta/movensys_episodes.jsonl` (one line per episode, with
+seed, stop reason, success and end score).
+
+### B. Live replay in Isaac Sim: the robot re-executes the recorded actions
+
+Needs the scene playing, the guard and the scorer. The collection launch can stay up while the
+manager is idle (do not press `s` during a replay). Drop the dead-man first (sim only):
+
+```
+ros2 param set /planar_guard require_deadman false
+```
+
+Open the two camera feeds (one terminal each) and keep RViz in the manipulator container for the
+arm:
+
+```
+source /opt/ros/jazzy/setup.bash
+ros2 run rqt_image_view rqt_image_view /image_top/rgb
+ros2 run rqt_image_view rqt_image_view /image_hand/rgb
+```
+
+Replay one episode from the venv shell with the workspace sourced:
+
+```
+source install/setup.bash
+python -m movensys_imitation_ros.replay_check --episodes 0 --out /tmp/replay_0.csv
+```
+
+Add `--root <other dataset>` for a dataset other than the default `pusht_cr3a_sim_v1`.
+
+```
+```
+
+For each episode it lifts, homes the tip to the episode's first `observation.state`, teleports
+the T to the first `block_pose`, lowers, publishes the recorded 10 Hz actions as a timed path on
+`/pusht/waypoints`, lifts and scores. It prints the position, yaw and coverage differences
+against the recording (PASS within 10 mm, 5 deg, 0.05) and writes them to the CSV. Omit
+`--episodes` to replay the whole dataset; each episode takes its recorded length plus about
+10 s of reset. Exact agreement is not expected: the path is the 10 Hz target interpolated, and
+PhysX contact is not bit-reproducible.

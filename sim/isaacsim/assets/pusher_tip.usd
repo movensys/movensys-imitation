@@ -12,7 +12,7 @@ def Xform "pusher_tip" (
         dictionary pusht = {
             double length_m = 0.08
             double link6_mount_z_m = 0.14
-            double radius_m = 0.01
+            double radius_m = 0.015
         }
     }
     kind = "component"
@@ -54,13 +54,13 @@ def Xform "pusher_tip" (
     )
     {
         uniform token axis = "Z"
-        float3[] extent = [(-0.01, -0.01, -0.04), (0.01, 0.01, 0.04)]
+        float3[] extent = [(-0.015, -0.015, -0.04), (0.015, 0.015, 0.04)]
         double height = 0.08
         rel material:binding = </pusher_tip/Looks/tip_material>
         rel material:binding:physics = </pusher_tip/Looks/tip_physics> (
             bindMaterialAs = "weakerThanDescendants"
         )
-        double radius = 0.01
+        double radius = 0.015
         quatf xformOp:orient = (1, 0, 0, 0)
         float3 xformOp:scale = (1, 1, 1)
         double3 xformOp:translate = (0, 0, 0.04)
