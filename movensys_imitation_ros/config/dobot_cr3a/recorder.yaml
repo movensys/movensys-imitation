@@ -31,6 +31,8 @@ episode_manager:
     n_episodes: 10              # with auto_start; 0 = until ~/abort
     auto_start: false           # true: after the first ~/start, run n_episodes back to back
     success_threshold: 0.80         # project definition (scoring.SUCCESS_THRESHOLD); keep the two equal
+    success_hold: 5             # consecutive /pusht/score samples at or above the threshold before
+                                # the episode ends on success (0.5 s at the scorer's 10 Hz)
     max_steps: 300              # frames at fps (30 s), as gym-pusht
     min_home_clearance: 0.04    # m between the tip edge and the T outline at the home point
     discard_on_timing_fault: true

@@ -93,6 +93,7 @@ class Driver(Node):
         self.block_pose: tuple[float, float, float] | None = None
         self.block_pose_t = -math.inf
         self.coverage = math.nan
+        self.success_samples = 0  # consecutive score samples at or above the threshold
         self.lift_state = ""
         self.recorder_state = ""
         self.recorder_frames = 0
@@ -141,6 +142,9 @@ class Driver(Node):
     def _on_score(self, msg: Float32MultiArray) -> None:
         if msg.data:
             self.coverage = float(msg.data[0])
+            self.success_samples = mc.success_run(
+                self.success_samples, self.coverage, self.cfg.success_threshold
+            )
 
     def _on_lift(self, msg: String) -> None:
         self.lift_state = msg.data
@@ -350,6 +354,7 @@ class EpisodeManager(Driver):
         p = self._declare_parameters()
         self.cfg = mc.ManagerConfig(
             success_threshold=p["success_threshold"],
+            success_hold=int(p["success_hold"]),
             max_steps=int(p["max_steps"]),
             min_home_clearance=p["min_home_clearance"],
             home_candidates=mc.pairs(p["task.home_candidates"]),
@@ -396,6 +401,7 @@ class EpisodeManager(Driver):
             "n_episodes": 10,
             "auto_start": False,
             "success_threshold": mc.ManagerConfig.success_threshold,
+            "success_hold": mc.ManagerConfig.success_hold,
             "max_steps": 300,
             "min_home_clearance": 0.04,
             "discard_on_timing_fault": True,
@@ -518,12 +524,13 @@ class EpisodeManager(Driver):
         self.set_guard_source(self.teleop_source)
         self.recorder("start")
         self.recorder_frames = 0
+        self.success_samples = 0
         t_start = time.monotonic()
         reason = None
         while reason is None:
             self._set_state(f"record:{self.recorder_frames}")
             reason = mc.stop_reason(
-                self.coverage, self.recorder_frames, cfg, self.stop_requested,
+                self.success_samples, self.recorder_frames, cfg, self.stop_requested,
                 self.discard_requested,
             )
             if self.recorder_state.startswith("fault"):

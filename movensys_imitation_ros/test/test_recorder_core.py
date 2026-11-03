@@ -85,6 +85,21 @@ def test_timing_clean_episode():
     assert t.to_dict(10)["time_to_success"] == pytest.approx(0.3)
 
 
+def test_time_to_success_is_the_run_that_lasts():
+    thr = rc.RecorderConfig().success_threshold
+    buf = rc.EpisodeBuffer(calibration(), rc.RecorderConfig())
+    for i, cov in enumerate((0.3, thr + 0.1, 0.3, 0.5)):  # a crossing the T slid back out of
+        buf.add(sample(i * 0.1, coverage=cov))
+    assert buf.timing.first_success_frame == -1
+    assert buf.timing.to_dict(10)["time_to_success"] is None
+    buf.add(sample(0.4, coverage=thr))
+    buf.add(sample(0.5, coverage=thr + 0.05))
+    assert buf.timing.first_success_frame == 4  # the run that holds to the end
+    assert buf.timing.to_dict(10)["time_to_success"] == pytest.approx(0.4)
+    buf.add(sample(0.6, coverage=math.nan))  # scorer had no pose: the run is broken
+    assert buf.timing.first_success_frame == -1
+
+
 def test_timing_missed_tick_and_stale_image():
     buf = rc.EpisodeBuffer(calibration(), rc.RecorderConfig())
     buf.add(sample(0.0))

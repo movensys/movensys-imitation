@@ -338,8 +338,10 @@ Per episode, with seed `seed_start + k` (collection seeds are 1000 and up):
    `min_home_clearance` from the outline), teleport the T to `sample_start_pose(seed)` (2 mm,
    1 deg, three tries, then 0.5 s at rest), lower, `lower_settle`.
 2. **Record**: `episode_meta` set on the recorder, guard source back to `teleop_source`
-   (`stick`), recorder `~/start`. Stops on coverage >= 0.80 (`/pusht/score` field 0), on
-   `max_steps` (300 frames) or on `~/stop` / `~/discard`.
+   (`stick`), recorder `~/start`. Stops once coverage >= 0.80 (`/pusht/score` field 0) has
+   held for `success_hold` consecutive samples (5, i.e. 0.5 s at the scorer's 10 Hz: a T still
+   sliding through the goal does not end the episode), on `max_steps` (300 frames) or on
+   `~/stop` / `~/discard`.
 3. **End**: recorder `~/stop`, guard to `pose`, lift up, `/pusht_scorer/score` for the
    authoritative score (geometric in sim, pixel on the real robot: the lift clears the tip from
    the T), `manager_core.decide_outcome` (operator discard, timing fault with
