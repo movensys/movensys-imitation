@@ -21,6 +21,9 @@ TIP_RADIUS = 0.015  # 30 mm rod (plan v2.6)
 HOME_CANDIDATES = ((-0.03, 0.08), (-0.25, 0.08), (0.19, 0.08))
 """Default parking points (task.yaml ``home_candidates``), near the robot inside the push area."""
 
+FIRST_COLLECTION_SEED = 1000
+"""Collection seeds are 1000 and up (plan Section 5); 0 to 49 evaluate."""
+
 REASON_DISCARD = "discard"
 REASON_STOP = "stop"
 REASON_SUCCESS = "success"
@@ -179,3 +182,15 @@ def pose_difference(a, b) -> tuple[float, float]:
 
 def start_pose_for_seed(seed: int) -> tuple[float, float, float]:
     return g.sample_start_pose(seed)
+
+
+def next_seed(sidecar: list[dict], first: int = FIRST_COLLECTION_SEED) -> int:
+    """Return the seed a new session continues from: one past the largest in the sidecar.
+
+    The manager's seed counter lives in memory, so a relaunch that left ``seed_start`` at its
+    default recorded seed 1000 again (episodes 0 and 1 of ``pusht_cr3a_sim_v1``, 2026-11-03).
+    Lines without a seed (old or foreign metadata) are ignored; an empty sidecar starts at
+    ``first``.
+    """
+    seeds = [int(line["seed"]) for line in sidecar if line.get("seed") is not None]
+    return max(seeds) + 1 if seeds else int(first)

@@ -27,7 +27,9 @@ episode_manager:
     mode: sim
     operator: ""                # set per session: -p operator:=name (sidecar metadata)
     teleop_source: stick        # guard source while recording: stick (Quest) | pose (runner)
-    seed_start: 1000            # collection seeds are 1000 and up (plan Section 5)
+    seed_start: -1              # < 0: one past the last seed in meta/movensys_episodes.jsonl
+                                # (1000 if the dataset is new; collection seeds are 1000 and up,
+                                # plan Section 5). Set a value to start elsewhere.
     n_episodes: 10              # with auto_start; 0 = until ~/abort
     auto_start: false           # true: after the first ~/start, run n_episodes back to back
     success_threshold: 0.80         # project definition (scoring.SUCCESS_THRESHOLD); keep the two equal

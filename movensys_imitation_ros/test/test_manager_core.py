@@ -128,6 +128,13 @@ def test_path_from_actions_is_timed_at_fps():
     assert path[2][1:] == (0.2, 0.1)
 
 
+def test_next_seed_continues_past_the_sidecar():
+    assert mc.next_seed([]) == 1000
+    assert mc.next_seed([], first=1200) == 1200
+    lines = [{"seed": 1000}, {"seed": 1000}, {"seed": 1003}, {"seed": 1001}, {"operator": "x"}]
+    assert mc.next_seed(lines) == 1004  # largest, not last: a retried seed does not step back
+
+
 def test_pose_difference_wraps_yaw():
     d, dyaw = mc.pose_difference((0.0, 0.0, math.pi - 0.01), (0.003, 0.004, -math.pi + 0.01))
     assert d == pytest.approx(0.005) and dyaw == pytest.approx(0.02)

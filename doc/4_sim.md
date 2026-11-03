@@ -330,7 +330,10 @@ The dataset is resumed if `<root>/meta/info.json` exists, so sessions append.
 
 ### Episode loop
 
-Per episode, with seed `seed_start + k` (collection seeds are 1000 and up):
+Per episode, with seed `seed_start + k` (collection seeds are 1000 and up). The counter only
+lives in memory, so by default (`seed_start` negative) the manager reads the sidecar at the
+first `~/start` and continues one past the largest seed recorded there, 1000 for a new dataset;
+sessions then append without repeating start poses. Pass `seed_start:=<n>` to start elsewhere.
 
 1. **Reset**: guard source `pose` (the arm holds), `~/lift` up (`lift_height` 0.08 m above the
    latched plane, ramped at the step limit), home to the `task.yaml` `home_candidates` entry
@@ -357,7 +360,7 @@ recorder discard, guard to `pose`, lift up, state `fault:<why>`; `~/start` runs 
 source env.bash
 colcon build --symlink-install --base-paths movensys_imitation_ros --packages-select movensys_imitation_ros
 source env.bash
-ros2 launch movensys_imitation_ros collect.launch.py mode:=sim operator:=name seed_start:=1000 n_episodes:=10
+ros2 launch movensys_imitation_ros collect.launch.py mode:=sim operator:=name n_episodes:=10   # seed_start:=<n> to override
 python -m movensys_imitation_ros.collect_keys      # s start, x stop+save, d discard, a abort, q
 ros2 topic echo /episode_manager/state             # idle | reset:* | record:<n> | end:* | fault:*
 ```

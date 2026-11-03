@@ -16,6 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 import math
+import os
 from pathlib import Path
 import shutil
 import time
@@ -280,6 +281,15 @@ class EpisodeStore:
         if self.dataset is not None:
             self.dataset.finalize()
             self.dataset = None
+
+
+def resolve_root(root: str) -> Path:
+    """Relative dataset roots are taken from the repo root (env.bash exports it), else the cwd."""
+    p = Path(root).expanduser()
+    if p.is_absolute():
+        return p
+    base = os.environ.get("MOVENSYS_IMITATION_ROOT")
+    return (Path(base) if base else Path.cwd()) / p
 
 
 def read_sidecar(root: Path) -> list[dict]:

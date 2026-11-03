@@ -45,6 +45,7 @@ import tf2_ros
 
 from movensys_imitation.tasks.pusht import geometry as g
 from movensys_imitation_ros import manager_core as mc
+from movensys_imitation_ros import recorder_core as rc
 from movensys_imitation_ros.pusht_scorer import pose_to_tuple
 from movensys_imitation_ros.setup_camera import pose_error, pose_msg
 
@@ -366,7 +367,7 @@ class EpisodeManager(Driver):
         self.mode: str = p["mode"]
         self.teleop_source: str = p["teleop_source"]
         self.input_device: str = p["input_device"]
-        self.seed = int(p["seed_start"])
+        self.seed = int(p["seed_start"])  # < 0: continue from the recorder's sidecar
         self.n_episodes = int(p["n_episodes"])
         self.auto_start: bool = p["auto_start"]
         self.lower_settle: float = p["lower_settle"]
@@ -384,8 +385,9 @@ class EpisodeManager(Driver):
         self.create_service(Trigger, "~/abort", self._on_abort)
         self.create_timer(1.0, lambda: self.state_pub.publish(String(data=self.state)))
         self._set_state("idle")
+        seeds_from = f"from {self.seed}" if self.seed >= 0 else "continuing from the sidecar"
         self.get_logger().info(
-            f"episode_manager: seeds from {self.seed}, {self.n_episodes or 'unlimited'} episodes, "
+            f"episode_manager: seeds {seeds_from}, {self.n_episodes or 'unlimited'} episodes, "
             f"teleop source {self.teleop_source!r}, operator {self.operator!r}, "
             f"auto_start={self.auto_start}; call ~/start"
         )
@@ -397,7 +399,7 @@ class EpisodeManager(Driver):
             "operator": "",
             "teleop_source": "stick",
             "input_device": "",  # sidecar provenance: quest | spacemouse (collect.launch.py)
-            "seed_start": 1000,
+            "seed_start": -1,  # < 0: one past the last seed in the sidecar (1000 if none)
             "n_episodes": 10,
             "auto_start": False,
             "success_threshold": mc.ManagerConfig.success_threshold,
@@ -425,7 +427,7 @@ class EpisodeManager(Driver):
         self.abort_requested = False
         self.start_event.set()
         res.success = True
-        res.message = f"next seed {self.seed}"
+        res.message = f"next seed {self.seed}" if self.seed >= 0 else "next seed from the sidecar"
         return res
 
     def _on_stop(self, _req, res: Trigger.Response) -> Trigger.Response:
@@ -459,6 +461,8 @@ class EpisodeManager(Driver):
             if self.abort_requested or not rclpy.ok():
                 continue
             try:
+                if self.seed < 0:
+                    self.seed = self.resume_seed()
                 self.episode(self.seed)
                 self.scripted(False)
             except DriverError as e:
@@ -481,6 +485,18 @@ class EpisodeManager(Driver):
                 step()
             except DriverError as e:
                 self.get_logger().warning(f"safe stop: {e}")
+
+    def resume_seed(self) -> int:
+        """One past the last seed in the recorder's sidecar; the recorder owns the dataset root.
+
+        Asked for in the worker thread at the first ``~/start`` (the recorder's parameter
+        services need the executor spinning, and the recorder may still be starting when the
+        manager is constructed).
+        """
+        root = rc.resolve_root(self.get_param(self.recorder_params, "root"))
+        seed = mc.next_seed(rc.read_sidecar(root))
+        self.get_logger().info(f"continuing from seed {seed} ({root / 'meta' / rc.SIDECAR})")
+        return seed
 
     def episode(self, seed: int) -> None:
         self.stop_requested = self.discard_requested = False
