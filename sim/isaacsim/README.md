@@ -77,9 +77,11 @@ default `-0.03 -0.05`), `--jetson-xy X Y` (where the Jetson box goes, default `0
   table is **0.2731 m** (in `scene_9a.json`). Until 2026-11-05 the rod ran from 0.14 m, below
   the gripper body; the bottom did not move, so `task.yaml` and the guard are unchanged.
 * **Hidden robot parts**: `Link6/bracket/gripper` (the gripper body, a visual-only prim of the
-  robot payload) is deactivated and `picker_1/visuals`, `picker_2/visuals` are invisible. The
-  finger bodies, their prismatic joints, `/joint_states` and the gripper service are unchanged.
-  MoveIt's collision world (URDF) still has the gripper.
+  robot payload) is deactivated, and so are the `visuals` and `collisions` children of
+  `picker_1` and `picker_2`: the finger colliders reached down to the T's height and knocked it
+  about in the first episodes recorded without the gripper (2026-11-05). The finger bodies, their
+  prismatic joints, `/joint_states` and the gripper service are unchanged. MoveIt's collision
+  world (URDF) still has the gripper.
 * **T block**: gym-pusht proportions at 30 mm per unit (v2.4), 30 mm tall, 0.15 kg, friction 0.40/0.35,
   dark blue (20, 40, 110). Its pose origin is the bar-stem junction; yaw 0 puts
   the bar along +x on the +y side. It starts at start-state seed 0.

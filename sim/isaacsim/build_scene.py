@@ -135,7 +135,7 @@ CAM_PRIM = f"{CAM_LINK}/camera_top"
 D455_FOCAL_MM = 1.93
 D455_H_APERTURE_MM = 3.896
 GRIPPER_PRIM = f"{LINK6}/bracket/gripper"  # visual gripper body from the robot payload
-FINGER_VISUALS = (f"{ROBOT}/picker_1/visuals", f"{ROBOT}/picker_2/visuals")
+FINGERS = (f"{ROBOT}/picker_1", f"{ROBOT}/picker_2")  # finger bodies on prismatic joints
 WM_IN_WORLD = Gf.Quatf(
     math.cos(math.pi / 4), 0, 0, math.sin(math.pi / 4)
 )  # world_manipulator is /World yawed +90 deg
@@ -373,18 +373,22 @@ for name, size, centre in (
     bind(cube.GetPrim(), block_vis)
     bind(cube.GetPrim(), block_phys, "physics")
 
-# Gripper body and fingers: hidden, since they blocked the camera's view of the T. The gripper is
-# a visual-only prim from the robot payload, so an ``active = false`` override in this layer
-# removes it. The fingers are rigid bodies on prismatic joints of the articulation; removing them
-# would change /joint_states and the gripper service, so only their visuals are hidden.
+# Gripper body and fingers: removed from sight and from contact, since they blocked the camera's
+# view of the T and the finger colliders reached down to the T's height and knocked it about
+# (seen 2026-11-05 in the first v2 episodes). The gripper is a visual-only prim from the robot
+# payload, so an ``active = false`` override in this layer removes it. The fingers are rigid
+# bodies on prismatic joints of the articulation; removing the bodies would change
+# /joint_states and the gripper service, so their ``visuals`` and ``collisions`` children are
+# deactivated instead and the bodies stay as massless-looking stubs on their joints.
 gripper = stage.GetPrimAtPath(GRIPPER_PRIM)
 assert gripper, f"{GRIPPER_PRIM} not found in {args.base}"
 gripper.SetActive(False)
-for path in FINGER_VISUALS:
-    vis = stage.GetPrimAtPath(path)
-    assert vis, f"{path} not found in {args.base}"
-    UsdGeom.Imageable(vis).MakeInvisible()
-log("gripper body deactivated, finger visuals hidden")
+for finger in FINGERS:
+    for child in ("visuals", "collisions"):
+        prim = stage.GetPrimAtPath(f"{finger}/{child}")
+        assert prim, f"{finger}/{child} not found in {args.base}"
+        prim.SetActive(False)
+log("gripper body deactivated, finger visuals and colliders deactivated")
 
 # Pusher tip under Link6: one rod along the tool axis (+z of Link6) from the flange to the tip
 # bottom. With the gripper gone it starts at the Link6 origin; the bottom stays at 0.22 m so the
@@ -683,9 +687,10 @@ meta = {
         "image_axes": "image +x = sheet +x; image up = sheet +y projected (robot at the top)",
     },
     "hidden_robot_parts": {
-        "deactivated": [GRIPPER_PRIM],
-        "invisible": list(FINGER_VISUALS),
-        "note": "visuals only; finger bodies, joints and /joint_states are unchanged",
+        "deactivated": [GRIPPER_PRIM]
+        + [f"{f}/{c}" for f in FINGERS for c in ("visuals", "collisions")],
+        "note": "finger bodies, joints and /joint_states are unchanged; the fingers no longer "
+        "render or collide",
     },
     "graphs": [
         pub,

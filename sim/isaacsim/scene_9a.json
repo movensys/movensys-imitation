@@ -115,13 +115,13 @@
   },
   "hidden_robot_parts": {
     "deactivated": [
-      "/World/movensys_manipulator/Link6/bracket/gripper"
-    ],
-    "invisible": [
+      "/World/movensys_manipulator/Link6/bracket/gripper",
       "/World/movensys_manipulator/picker_1/visuals",
-      "/World/movensys_manipulator/picker_2/visuals"
+      "/World/movensys_manipulator/picker_1/collisions",
+      "/World/movensys_manipulator/picker_2/visuals",
+      "/World/movensys_manipulator/picker_2/collisions"
     ],
-    "note": "visuals only; finger bodies, joints and /joint_states are unchanged"
+    "note": "finger bodies, joints and /joint_states are unchanged; the fingers no longer render or collide"
   },
   "graphs": [
     "/Graph/pusht_t_block_pose",
