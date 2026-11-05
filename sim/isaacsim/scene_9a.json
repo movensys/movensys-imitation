@@ -113,6 +113,29 @@
     "rate_hz": 30,
     "image_axes": "image +x = sheet +x; image up = sheet +y projected (robot at the top)"
   },
+  "appearance": {
+    "table_top": {
+      "rgb": [
+        185,
+        185,
+        190
+      ],
+      "roughness": 0.4,
+      "metallic": 0.8,
+      "note": "brushed silver, as the lab table"
+    },
+    "jetson_box": {
+      "rgb": [
+        20,
+        20,
+        22
+      ],
+      "roughness": 0.6,
+      "metallic": 0.0,
+      "note": "black Jetson Thor, as in the lab"
+    },
+    "robot": "payload white (real CR3A is white with grey joint caps)"
+  },
   "hidden_robot_parts": {
     "deactivated": [
       "/World/movensys_manipulator/Link6/visuals/gripper",

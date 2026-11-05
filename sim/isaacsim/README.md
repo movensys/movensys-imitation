@@ -84,6 +84,12 @@ default `-0.03 -0.05`), `--jetson-xy X Y` (where the Jetson box goes, default `0
   about in the first episodes recorded without the gripper (2026-11-05). The finger bodies, their
   prismatic joints, `/joint_states` and the gripper service are unchanged. MoveIt's collision
   world (URDF) still has the gripper.
+* **Table top and Jetson box**: brushed silver (185, 185, 190, metallic 0.8, roughness 0.4) and
+  black (20, 20, 22), as in the lab (2026-11-05), because both are inside the policy crop. The
+  payload binds its materials on `world_manipulator/visuals/{table,mesh_2}` with
+  strongerThanDescendants, so the build de-instances `visuals` and binds the replacements the
+  same way. Neither colour has saturation, so the T threshold ignores them. The robot stays
+  white (the real CR3A is white with grey joint caps).
 * **T block**: gym-pusht proportions at 30 mm per unit (v2.4), 30 mm tall, 0.15 kg, friction 0.40/0.35,
   dark blue (20, 40, 110). Its pose origin is the bar-stem junction; yaw 0 puts
   the bar along +x on the +y side. It starts at start-state seed 0.

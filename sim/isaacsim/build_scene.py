@@ -229,12 +229,15 @@ def srgb_to_linear(rgb8) -> tuple[float, float, float]:
     return tuple(out)
 
 
-def color_material(stage, path: str, rgb) -> UsdShade.Material:
+def color_material(
+    stage, path: str, rgb, roughness: float = 0.7, metallic: float = 0.0
+) -> UsdShade.Material:
     mat = UsdShade.Material.Define(stage, path)
     surf = UsdShade.Shader.Define(stage, f"{path}/surface")
     surf.CreateIdAttr("UsdPreviewSurface")
     surf.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(*rgb))
-    surf.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.7)
+    surf.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(roughness)
+    surf.CreateInput("metallic", Sdf.ValueTypeNames.Float).Set(metallic)
     mat.CreateSurfaceOutput().ConnectToSource(
         surf.CreateOutput("surface", Sdf.ValueTypeNames.Token)
     )
@@ -407,6 +410,29 @@ for path in hidden:
     prim.SetActive(False)
     assert not prim.IsActive(), f"{path} still active"
 log(f"deactivated {len(hidden)} gripper, plate and finger prims")
+
+# Table top and Jetson box as in the lab (2026-11-05): brushed silver table, black Jetson Thor.
+# Both are inside the policy crop, so the sim look should match the real camera's. The payload
+# binds its white or grey material on the visual Xforms with strongerThanDescendants, so the
+# replacement is bound the same way on the Xform and its geometry, after de-instancing
+# ``world_manipulator/visuals``. Neither colour has saturation, so the T threshold ignores them.
+WM_VISUALS = f"{ROBOT}/world_manipulator/visuals"
+SURFACES = {  # visual Xform -> (material name, sRGB 0-255, roughness, metallic)
+    f"{WM_VISUALS}/table": ("table_silver", (185, 185, 190), 0.4, 0.8),
+    f"{WM_VISUALS}/mesh_2": ("jetson_black", (20, 20, 22), 0.6, 0.0),  # the Jetson box visual
+}
+wm_vis = stage.GetPrimAtPath(WM_VISUALS)
+if wm_vis.IsInstance():
+    wm_vis.SetInstanceable(False)
+for path, (mat_name, rgb, rough, metal) in SURFACES.items():
+    xform = stage.GetPrimAtPath(path)
+    assert xform and not xform.IsInstanceProxy(), f"{path} not editable in {args.base}"
+    mat = color_material(
+        stage, f"{LOOKS}/{mat_name}", srgb_to_linear(rgb), roughness=rough, metallic=metal
+    )
+    for prim in (xform, *xform.GetChildren()):
+        UsdShade.MaterialBindingAPI.Apply(prim).Bind(mat, UsdShade.Tokens.strongerThanDescendants)
+log("table top silver, Jetson box black")
 
 # Pusher tip under Link6: one rod along the tool axis (+z of Link6) from the flange to the tip
 # bottom. With the gripper gone it starts at the Link6 origin; the bottom stays at 0.22 m so the
@@ -703,6 +729,11 @@ meta = {
         "resolution": [1280, 720],
         "rate_hz": 30,
         "image_axes": "image +x = sheet +x; image up = sheet +y projected (robot at the top)",
+    },
+    "appearance": {
+        "table_top": {"rgb": [185, 185, 190], "roughness": 0.4, "metallic": 0.8, "note": "brushed silver, as the lab table"},
+        "jetson_box": {"rgb": [20, 20, 22], "roughness": 0.6, "metallic": 0.0, "note": "black Jetson Thor, as in the lab"},
+        "robot": "payload white (real CR3A is white with grey joint caps)",
     },
     "hidden_robot_parts": {
         "deactivated": hidden,
