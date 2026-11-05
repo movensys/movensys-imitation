@@ -32,8 +32,8 @@ JOINT_NAMES = tuple(f"joint{i}" for i in range(1, 7))
 
 @dataclass
 class RecorderConfig:
-    repo_id: str = "movensys/pusht_cr3a_sim_v1"
-    root: Path = Path("datasets/movensys/pusht_cr3a_sim_v1")
+    repo_id: str = "movensys/pusht_cr3a_sim_v2"
+    root: Path = Path("datasets/movensys/pusht_cr3a_sim_v2")
     fps: int = 10
     image_size: int = 256
     robot_type: str = "dobot_cr3a"
@@ -73,7 +73,11 @@ def missing_inputs(s: Sample) -> list[str]:
 
 
 def resize_crop(crop_rgb: np.ndarray, size: int) -> np.ndarray:
-    """Square crop to ``size`` x ``size`` with area interpolation (downscale from about 628 px)."""
+    """Crop to ``size`` x ``size`` with area interpolation.
+
+    A landscape crop (oblique camera, 2026-11-05) is squashed, not letterboxed: the same fixed
+    warp for the policy image and the replay.
+    """
     import cv2
 
     if crop_rgb.shape[0] == size and crop_rgb.shape[1] == size:

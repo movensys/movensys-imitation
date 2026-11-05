@@ -70,16 +70,37 @@
   "pusher_tip": {
     "prim": "/World/movensys_manipulator/Link6/pusher_tip",
     "radius_m": 0.015,
-    "length_m": 0.08,
-    "link6_to_tip_bottom_m": 0.22000000000000003,
-    "eef_z_setpoint_wm": 0.2731200915781034,
+    "length_m": 0.22,
+    "link6_to_tip_bottom_m": 0.22,
+    "eef_z_setpoint_wm": 0.27312009157810335,
     "note": "Link6 z in world_manipulator that puts the tip bottom 10 mm above the table"
   },
   "camera": {
     "link_prim": "/World/camera_top_link",
     "camera_prim": "/World/camera_top_link/camera_top",
-    "model_prim": "/World/camera_top_link/RSD455/Camera_OmniVision_OV9782_Color",
-    "height_above_table_m": 0.7,
+    "view": "oblique from the operator side, looking back toward the robot (2026-11-05)",
+    "position_sheet_m": [
+      0.015,
+      -0.35,
+      0.4
+    ],
+    "look_at_sheet_m": [
+      0.0,
+      0.0
+    ],
+    "height_above_table_m": 0.4,
+    "pitch_from_vertical_deg": 41.21197929120176,
+    "position_world_m": [
+      0.39999999999999997,
+      -0.015,
+      0.4431200915781034
+    ],
+    "optics": {
+      "focal_length_mm": 1.93,
+      "horizontal_aperture_mm": 3.896,
+      "hfov_deg": 90.531880673026,
+      "fx_px": 634.0862422997947
+    },
     "topics": [
       "/image_top/rgb",
       "/image_top/camera_info"
@@ -90,42 +111,22 @@
       720
     ],
     "rate_hz": 30,
-    "image_axes": "image +x = sheet +x, image up = sheet +y (robot at the top of the image)"
+    "image_axes": "image +x = sheet +x; image up = sheet +y projected (robot at the top)"
   },
-  "camera_hand": {
-    "link_prim": "/World/movensys_manipulator/Link6/bracket/camera_hand_link",
-    "camera_prim": "/World/movensys_manipulator/Link6/bracket/camera_hand_link/camera_hand",
-    "model_prim": "/World/movensys_manipulator/Link6/bracket/camera_hand_link/RSD455/Camera_OmniVision_OV9782_Color",
-    "mount_in_link6_bracket": {
-      "xyz": [
-        0.0,
-        -0.08,
-        0.038
-      ],
-      "quat_wxyz": [
-        0.5,
-        0.5,
-        -0.5,
-        0.5
-      ],
-      "source": "7a_robopoly_simulation.usd"
-    },
-    "topics": [
-      "/image_hand/rgb",
-      "/image_hand/camera_info"
+  "hidden_robot_parts": {
+    "deactivated": [
+      "/World/movensys_manipulator/Link6/bracket/gripper"
     ],
-    "frame_id": "camera_hand_color_optical_frame",
-    "resolution": [
-      1280,
-      720
+    "invisible": [
+      "/World/movensys_manipulator/picker_1/visuals",
+      "/World/movensys_manipulator/picker_2/visuals"
     ],
-    "rate_hz": 30
+    "note": "visuals only; finger bodies, joints and /joint_states are unchanged"
   },
   "graphs": [
     "/Graph/pusht_t_block_pose",
     "/Graph/pusht_t_block_pose_cmd",
     "/Graph/ROS_Camera_Top",
-    "/Graph/ROS_Camera_Hand",
     "/Graph/ROS_JointStates",
     "/Graph/ROS_Clock"
   ]

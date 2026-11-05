@@ -3,8 +3,8 @@
 Run with Isaac Sim's own Python, with system ROS 2 Jazzy sourced so the ROS 2 bridge loads:
 
     source /opt/ros/jazzy/setup.bash
-    ~/isaac-sim/python.sh sim/isaacsim/build_scene.py            # build and save only
-    ~/isaac-sim/python.sh sim/isaacsim/build_scene.py --play 60     # then run smoke_check.py
+    ~/isaacsim/6.2/python.sh sim/isaacsim/build_scene.py            # build and save only
+    ~/isaacsim/6.2/python.sh sim/isaacsim/build_scene.py --play 60  # then run smoke_check.py
 
 Run ``make_assets.py`` first (it writes the sheet texture the scene references).
 
@@ -13,18 +13,22 @@ What is added to the 3a scene (robot, table, room, joint-state and clock graphs 
 * ``/World/pusht``                      the sheet frame: aligned with ``world_manipulator``,
                                         origin at the push-area centre on the table top
 * ``/World/pusht/target_sheet``         textured quad with the goal outline and start marks
-* ``/World/pusht/t_block``              rigid T (two dark blue boxes, 0.25 kg, friction material)
+* ``/World/pusht/t_block``              rigid T (two dark blue boxes, 0.15 kg, friction material)
                                         No markers anywhere (plan v2.1): scoring is pixel-based.
-* ``.../Link6/pusher_tip``              30 mm cylinder along the tool axis, collision enabled
-* ``/World/camera_top_link``            RealSense D455 model looking straight down; the render
-                                        camera is the plain ``camera_top`` child: 1280 x 720,
-                                        30 Hz on ``/image_top/rgb`` and ``/image_top/camera_info``
-* ``.../Link6/bracket/camera_hand_link`` wrist D455 model at the ``7a`` scene's mount pose, its
-                                        rigid body removed; the render camera is the plain
-                                        ``camera_hand`` child: 1280 x 720, 30 Hz on
-                                        ``/image_hand/rgb`` and ``/image_hand/camera_info``
+* ``.../Link6/pusher_tip``              30 mm rod along the tool axis from the Link6 flange to
+                                        0.22 m, collision enabled
+* ``/World/camera_top_link/camera_top`` a plain ``Camera`` with the D455 colour optics on the
+                                        operator side of the table, looking obliquely back at the
+                                        sheet and the robot (``--camera-sheet``,
+                                        ``--camera-look-at``): 1280 x 720, 30 Hz on
+                                        ``/image_top/rgb`` and ``/image_top/camera_info``
 * ``/Graph/pusht_t_block_pose``         ``geometry_msgs/Pose`` of the T in the sheet frame, 30 Hz
 * ``/Graph/pusht_t_block_pose_cmd``     teleports the T to a ``Pose`` and zeroes its velocity
+
+What is taken away from the 3a robot (visuals only; the articulation and the joint topics are
+unchanged): the gripper body under ``Link6/bracket`` is deactivated and the two finger bodies are
+made invisible, because they hid the T from the camera. The wrist camera of earlier builds is
+gone with them (2026-11-05); the dataset never recorded it.
 
 ``/Graph/ROS_Record_Camera`` and the render product it left behind are dropped (a second render
 product costs frame rate; the Camera prim stays for the GUI). ``scene_9a.json`` next to the scene
@@ -69,9 +73,29 @@ parser.add_argument(
     "(the 3a default (0.36, 0.18) overlaps the wide sheet)",
 )
 parser.add_argument(
-    "--camera-height", type=float, default=0.70, help="camera above the table top [m]"
+    "--camera-sheet",
+    type=float,
+    nargs=3,
+    default=(0.015, -0.35, 0.40),
+    metavar=("X", "Y", "Z"),
+    help="camera position in the sheet frame [m]: x, y on the table, z above the table top. "
+    "The default is on the operator side, 5 cm beyond the table edge, 0.40 m up "
+    "(decided 2026-11-05 after the straight-down view lost the T behind the forearm)",
 )
-parser.add_argument("--tip-length", type=float, default=0.08, help="pusher tip cylinder length [m]")
+parser.add_argument(
+    "--camera-look-at",
+    type=float,
+    nargs=2,
+    default=(0.0, 0.0),
+    metavar=("X", "Y"),
+    help="point on the table top the optical axis goes through, in the sheet frame [m]",
+)
+parser.add_argument(
+    "--tip-length",
+    type=float,
+    default=0.22,
+    help="pusher tip rod length [m], from the Link6 flange to the tip bottom",
+)
 parser.add_argument(
     "--play", type=float, default=0.0, help="after saving, play for this many seconds"
 )
@@ -104,17 +128,14 @@ LOOKS = f"{PUSHT}/Looks"
 BLOCK_RGB = (20, 40, 110)
 TIP = f"{LINK6}/pusher_tip"
 CAM_LINK = "/World/camera_top_link"
-ASSET_CAM_PRIM = (
-    f"{CAM_LINK}/RSD455/Camera_OmniVision_OV9782_Color"  # pose and optics reference only
-)
 CAM_PRIM = f"{CAM_LINK}/camera_top"
-HAND_LINK = f"{LINK6}/bracket/camera_hand_link"
-HAND_ASSET_CAM_PRIM = f"{HAND_LINK}/RSD455/Camera_OmniVision_OV9782_Color"
-HAND_CAM_PRIM = f"{HAND_LINK}/camera_hand"
-# Wrist D455 mount pose in the Link6 bracket frame, copied from 7a_robopoly_simulation.usd.
-HAND_IN_BRACKET_T = (0.0, -0.08, 0.038)
-HAND_IN_BRACKET_Q = Gf.Quatf(0.5, 0.5, -0.5, 0.5)
-RSD455_URL = "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.0/Isaac/Sensors/Intel/RealSense/rsd455.usd"
+# D455 colour optics as authored on the colour camera of Isaac's rsd455.usd asset (focal length
+# and horizontal aperture in mm): 90.5 deg horizontal field of view, fx = 634 px at 1280 wide.
+# Hard-coded so the scene no longer references the remote asset (its rigid body fell on Play).
+D455_FOCAL_MM = 1.93
+D455_H_APERTURE_MM = 3.896
+GRIPPER_PRIM = f"{LINK6}/bracket/gripper"  # visual gripper body from the robot payload
+FINGER_VISUALS = (f"{ROBOT}/picker_1/visuals", f"{ROBOT}/picker_2/visuals")
 WM_IN_WORLD = Gf.Quatf(
     math.cos(math.pi / 4), 0, 0, math.sin(math.pi / 4)
 )  # world_manipulator is /World yawed +90 deg
@@ -352,9 +373,24 @@ for name, size, centre in (
     bind(cube.GetPrim(), block_vis)
     bind(cube.GetPrim(), block_phys, "physics")
 
-# Pusher tip under Link6: a cylinder along the tool axis (+z of Link6), protruding past the fingers.
+# Gripper body and fingers: hidden, since they blocked the camera's view of the T. The gripper is
+# a visual-only prim from the robot payload, so an ``active = false`` override in this layer
+# removes it. The fingers are rigid bodies on prismatic joints of the articulation; removing them
+# would change /joint_states and the gripper service, so only their visuals are hidden.
+gripper = stage.GetPrimAtPath(GRIPPER_PRIM)
+assert gripper, f"{GRIPPER_PRIM} not found in {args.base}"
+gripper.SetActive(False)
+for path in FINGER_VISUALS:
+    vis = stage.GetPrimAtPath(path)
+    assert vis, f"{path} not found in {args.base}"
+    UsdGeom.Imageable(vis).MakeInvisible()
+log("gripper body deactivated, finger visuals hidden")
+
+# Pusher tip under Link6: one rod along the tool axis (+z of Link6) from the flange to the tip
+# bottom. With the gripper gone it starts at the Link6 origin; the bottom stays at 0.22 m so the
+# guard's z setpoint and task.yaml's link6_to_tip_bottom are unchanged from the gripper build.
 TIP_RADIUS = 0.015  # 30 mm rod, one gym-pusht T unit, as the paper's agent (plan v2.6)
-tip_top = 0.14  # where the gripper body ends along Link6 +z (from the Link6 visual extent)
+tip_top = 0.0  # Link6 flange
 tip_offset = tip_top + args.tip_length  # Link6 origin to tip bottom
 tip = UsdGeom.Cylinder.Define(stage, TIP)
 tip.CreateRadiusAttr(TIP_RADIUS)
@@ -371,90 +407,45 @@ UsdPhysics.CollisionAPI.Apply(tip.GetPrim())
 bind(tip.GetPrim(), color_material(stage, f"{LOOKS}/tip_material", (0.15, 0.15, 0.18)))
 bind(tip.GetPrim(), physics_material(stage, f"{LOOKS}/tip_physics", 0.30, 0.25), "physics")
 
-# Overhead camera: D455 model, optical axis straight down, image +x = sheet +x, image up = sheet +y.
+# Top camera: an oblique view from the operator side of the table. ``camera_top_link`` carries the
+# pose (a USD camera looks along its -z with +y up, so the link frame is the camera frame) and
+# the plain ``camera_top`` child carries the optics at identity. The image up direction is the
+# sheet +y direction (toward the robot) projected into the image plane, so the robot base is at
+# the top of the picture as before and image +x is sheet +x.
+cam_sheet = Gf.Vec3d(*args.camera_sheet)
+cam_pos = Gf.Vec3d(*wm_to_world(cam_sheet[0], cam_sheet[1]), 0.0) + Gf.Vec3d(
+    sheet_world[0], sheet_world[1], table_z + cam_sheet[2]
+)
+look_at = Gf.Vec3d(*wm_to_world(*args.camera_look_at), 0.0) + Gf.Vec3d(*sheet_world)
+view = (look_at - cam_pos).GetNormalized()
+up_hint = Gf.Vec3d(*wm_to_world(0.0, 1.0), 0.0)  # sheet +y in /World
+up = (up_hint - Gf.Dot(up_hint, view) * view).GetNormalized()
+right = Gf.Cross(view, up)
+# Gf matrices act on row vectors, so the rows are the camera axes in /World.
+m_cam = Gf.Matrix3d(*right, *up, *(-view))
+q_cam = m_cam.ExtractRotation().GetQuat()
 cam_link = UsdGeom.Xform.Define(stage, CAM_LINK)
-cam_link.GetPrim().GetReferences().AddReference(RSD455_URL)
-set_xform(cam_link.GetPrim(), (sheet_world[0], sheet_world[1], table_z + args.camera_height))
-for _ in range(5):
-    app.update()
-asset_cam = stage.GetPrimAtPath(ASSET_CAM_PRIM)
-assert asset_cam and asset_cam.GetTypeName() == "Camera", (
-    f"{ASSET_CAM_PRIM} missing (asset not loaded?)"
-)
-q_cam_in_link = UsdGeom.XformCache().GetLocalToWorldTransform(asset_cam).ExtractRotationQuat()
-q_desired = Gf.Quatd(
-    WM_IN_WORLD.GetReal(), Gf.Vec3d(*WM_IN_WORLD.GetImaginary())
-)  # camera +x = world +y, +y = world -x, -z down
-want = {"x": Gf.Vec3d(0, 1, 0), "y": Gf.Vec3d(-1, 0, 0), "z": Gf.Vec3d(0, 0, 1)}
-best = None
-for q_link in (q_desired * q_cam_in_link.GetInverse(), q_cam_in_link.GetInverse() * q_desired):
-    r = Gf.Rotation(q_link)
-    rc = Gf.Rotation(q_cam_in_link)
-    axes = {
-        k: r.TransformDir(rc.TransformDir(v))
-        for k, v in {"x": Gf.Vec3d(1, 0, 0), "y": Gf.Vec3d(0, 1, 0), "z": Gf.Vec3d(0, 0, 1)}.items()
-    }
-    err = sum((axes[k] - want[k]).GetLength() for k in want)
-    if best is None or err < best[0]:
-        best = (err, q_link)
-assert best[0] < 1e-3, f"could not orient the camera (error {best[0]})"
-q_link = best[1]
-set_xform(
-    cam_link.GetPrim(),
-    (sheet_world[0], sheet_world[1], table_z + args.camera_height),
-    Gf.Quatf(q_link.GetReal(), Gf.Vec3f(*q_link.GetImaginary())),
-)
+set_xform(cam_link.GetPrim(), cam_pos, Gf.Quatf(q_cam.GetReal(), Gf.Vec3f(*q_cam.GetImaginary())))
+cam = UsdGeom.Camera.Define(stage, CAM_PRIM)
+cam.CreateFocalLengthAttr(D455_FOCAL_MM)
+cam.CreateHorizontalApertureAttr(D455_H_APERTURE_MM)
+cam.CreateVerticalApertureAttr(D455_H_APERTURE_MM * 720 / 1280)  # square pixels at 1280 x 720
+cam.CreateClippingRangeAttr(Gf.Vec2f(0.01, 100.0))
 app.update()
-
-
-def render_camera(link, asset_cam, path: str, label: str) -> UsdGeom.Camera:
-    """A plain Camera prim under ``link`` at the asset colour camera's pose, with its optics.
-
-    The asset's own camera prims are marked invisible, and a render product on one of them shows
-    only the dome backdrop (visible, it shows the inside of the lens housing), so the asset stays
-    a visual prop only.
-    """
-    plain = UsdGeom.Camera.Define(stage, path)
-    m_rel = (
-        UsdGeom.XformCache().GetLocalToWorldTransform(asset_cam)
-        * UsdGeom.XformCache().GetLocalToWorldTransform(link).GetInverse()
-    )
-    plain.AddTransformOp().Set(m_rel)
-    h_ap = asset_cam.GetAttribute("horizontalAperture").Get()
-    plain.CreateFocalLengthAttr(asset_cam.GetAttribute("focalLength").Get())
-    plain.CreateHorizontalApertureAttr(h_ap)
-    plain.CreateVerticalApertureAttr(h_ap * 720 / 1280)  # square pixels at 1280 x 720
-    plain.CreateClippingRangeAttr(Gf.Vec2f(0.01, 100.0))
-    app.update()
-    m_cam = UsdGeom.XformCache().GetLocalToWorldTransform(plain.GetPrim())
-    log(
-        f"{label} camera world pos {tuple(round(v, 3) for v in m_cam.ExtractTranslation())}, "
-        f"view dir {tuple(round(v, 3) for v in m_cam.TransformDir(Gf.Vec3d(0, 0, -1)))}, "
-        f"image up {tuple(round(v, 3) for v in m_cam.TransformDir(Gf.Vec3d(0, 1, 0)))}"
-    )
-    return plain
-
-
-render_camera(cam_link.GetPrim(), asset_cam, CAM_PRIM, "top")
-
-# Wrist camera: the 7a scene's D455 mount on the Link6 bracket, same local pose. The asset root
-# carries a dynamic rigid body, which PhysX rejects when nested inside the Link6 body (and which
-# falls under gravity when it is not), so the body and mass schemas are removed and the model
-# rides on the link as plain geometry.
-hand_link = UsdGeom.Xform.Define(stage, HAND_LINK)
-hand_link.GetPrim().GetReferences().AddReference(RSD455_URL)
-set_xform(hand_link.GetPrim(), HAND_IN_BRACKET_T, HAND_IN_BRACKET_Q)
-for _ in range(5):
-    app.update()
-hand_asset_cam = stage.GetPrimAtPath(HAND_ASSET_CAM_PRIM)
-assert hand_asset_cam and hand_asset_cam.GetTypeName() == "Camera", (
-    f"{HAND_ASSET_CAM_PRIM} missing (asset not loaded?)"
+m_world = UsdGeom.XformCache().GetLocalToWorldTransform(cam.GetPrim())
+got_view = m_world.TransformDir(Gf.Vec3d(0, 0, -1))
+got_up = m_world.TransformDir(Gf.Vec3d(0, 1, 0))
+assert (got_view - view).GetLength() < 1e-6 and (got_up - up).GetLength() < 1e-6, (
+    f"camera orientation did not round-trip: view {got_view} vs {view}, up {got_up} vs {up}"
 )
-hand_model = stage.GetPrimAtPath(f"{HAND_LINK}/RSD455")
-for schema in ("PhysicsRigidBodyAPI", "PhysxRigidBodyAPI", "PhysicsMassAPI"):
-    hand_model.RemoveAppliedSchema(schema)
-assert not hand_model.HasAPI(UsdPhysics.RigidBodyAPI), "hand D455 still has a rigid body"
-render_camera(hand_link.GetPrim(), hand_asset_cam, HAND_CAM_PRIM, "hand")
+cam_pitch_deg = math.degrees(math.acos(-view[2]))  # 0 = straight down
+hfov_deg = 2 * math.degrees(math.atan(D455_H_APERTURE_MM / 2 / D455_FOCAL_MM))
+log(
+    f"top camera at sheet {tuple(cam_sheet)} -> world {tuple(round(v, 3) for v in cam_pos)}, "
+    f"looking at sheet {tuple(args.camera_look_at)}, {cam_pitch_deg:.1f} deg from vertical, "
+    f"view dir {tuple(round(v, 3) for v in got_view)}, image up {tuple(round(v, 3) for v in got_up)}, "
+    f"HFOV {hfov_deg:.1f} deg"
+)
 
 # --------------------------------------------------------------------------------------- graphs
 keys = og.Controller.Keys
@@ -506,9 +497,6 @@ def camera_graph(graph_path: str, cam_prim: str, namespace: str, frame_id: str) 
 
 
 camera_graph("/Graph/ROS_Camera_Top", CAM_PRIM, "/image_top", "camera_top_color_optical_frame")
-camera_graph(
-    "/Graph/ROS_Camera_Hand", HAND_CAM_PRIM, "/image_hand", "camera_hand_color_optical_frame"
-)
 
 # T pose publisher: every second physics tick (60 Hz physics -> 30 Hz), pose in the sheet frame.
 pub = "/Graph/pusht_t_block_pose"
@@ -676,33 +664,33 @@ meta = {
     "camera": {
         "link_prim": CAM_LINK,
         "camera_prim": CAM_PRIM,
-        "model_prim": ASSET_CAM_PRIM,
-        "height_above_table_m": args.camera_height,
+        "view": "oblique from the operator side, looking back toward the robot (2026-11-05)",
+        "position_sheet_m": list(cam_sheet),
+        "look_at_sheet_m": list(args.camera_look_at),
+        "height_above_table_m": cam_sheet[2],
+        "pitch_from_vertical_deg": cam_pitch_deg,
+        "position_world_m": list(cam_pos),
+        "optics": {
+            "focal_length_mm": D455_FOCAL_MM,
+            "horizontal_aperture_mm": D455_H_APERTURE_MM,
+            "hfov_deg": hfov_deg,
+            "fx_px": 1280 * D455_FOCAL_MM / D455_H_APERTURE_MM,
+        },
         "topics": ["/image_top/rgb", "/image_top/camera_info"],
         "frame_id": "camera_top_color_optical_frame",
         "resolution": [1280, 720],
         "rate_hz": 30,
-        "image_axes": "image +x = sheet +x, image up = sheet +y (robot at the top of the image)",
+        "image_axes": "image +x = sheet +x; image up = sheet +y projected (robot at the top)",
     },
-    "camera_hand": {
-        "link_prim": HAND_LINK,
-        "camera_prim": HAND_CAM_PRIM,
-        "model_prim": HAND_ASSET_CAM_PRIM,
-        "mount_in_link6_bracket": {
-            "xyz": list(HAND_IN_BRACKET_T),
-            "quat_wxyz": [HAND_IN_BRACKET_Q.GetReal(), *HAND_IN_BRACKET_Q.GetImaginary()],
-            "source": "7a_robopoly_simulation.usd",
-        },
-        "topics": ["/image_hand/rgb", "/image_hand/camera_info"],
-        "frame_id": "camera_hand_color_optical_frame",
-        "resolution": [1280, 720],
-        "rate_hz": 30,
+    "hidden_robot_parts": {
+        "deactivated": [GRIPPER_PRIM],
+        "invisible": list(FINGER_VISUALS),
+        "note": "visuals only; finger bodies, joints and /joint_states are unchanged",
     },
     "graphs": [
         pub,
         sub,
         "/Graph/ROS_Camera_Top",
-        "/Graph/ROS_Camera_Hand",
         "/Graph/ROS_JointStates",
         "/Graph/ROS_Clock",
     ],
@@ -737,9 +725,6 @@ if args.play > 0:
                 "pose.pos.x": f"{pub}/BreakTranslate.outputs:x",
                 "camera.renderProduct": (
                     "/Graph/ROS_Camera_Top/RenderProduct.outputs:renderProductPath"
-                ),
-                "hand.renderProduct": (
-                    "/Graph/ROS_Camera_Hand/RenderProduct.outputs:renderProductPath"
                 ),
             }
             vals = {}

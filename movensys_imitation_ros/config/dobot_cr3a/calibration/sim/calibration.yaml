@@ -2,36 +2,36 @@ image_size:
 - 1280
 - 720
 crop:
-- 315
-- 45
-- 628
-- 628
-px_per_m: 951.4400113712347
-t_area_px: 5717
-goal_area_px: 5717
+- 188
+- 0
+- 905
+- 720
+px_per_m: 1370.3203194062978
+t_area_px: 11732
+goal_area_px: 11732
 threshold:
   hue:
-  - 93
-  - 124
-  sat_min: 47
+  - 105
+  - 126
+  sat_min: 98
   val:
-  - 49
-  - 193
+  - 0
+  - 151
 t_hsv_median:
 - 116
-- 146
-- 135
+- 189
+- 99
 centre_uv:
-- 313.8595417176841
-- 314.48836802518804
+- 452.87845209682916
+- 351.16297306512104
 goal_mask: goal_mask.png
 reference: reference.png
 meta:
-  created: '2026-10-27T09:24:30'
+  created: '2026-11-05T12:47:25'
   mode: sim
   image_topic: /image_top/rgb
   frame_id: camera_top_color_optical_frame
-  stamp: '40.216668764'
+  stamp: '213.350000000'
   initial_threshold:
     hue:
     - 95
@@ -48,4 +48,3 @@ meta:
     fy: 634.0862399675711
     cx: 640.0
     cy: 360.0
-  camera_height_m: 0.7

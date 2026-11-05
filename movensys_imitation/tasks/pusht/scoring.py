@@ -203,22 +203,25 @@ def fit_crop(
     sheet_size: tuple[float, float] = g.SHEET_SIZE,
     margin_m: float = 0.03,
 ) -> tuple[tuple[int, int, int, int], float]:
-    """Square crop ``(x0, y0, side, side)`` around the goal and the pixel scale, from the T itself.
+    """Crop ``(x0, y0, w, h)`` around the goal and the pixel scale, from the T itself.
 
     The scale comes from the T's pixel area at the goal, so no intrinsics are needed and the same
     code serves the real camera. It is the scale of the T's top face (30 mm closer to the camera
     than the sheet, about 4.5 % larger at 0.7 m), which makes the crop slightly generous. The goal
-    centroid is the sheet centre by construction (:func:`geometry.goal_pose`). The side is capped
-    by the frame; the caller checks it still contains the sheet.
+    centroid is the sheet centre by construction (:func:`geometry.goal_pose`). The crop is square
+    when the frame allows it; each side is capped by the frame separately, so the oblique camera
+    (2026-11-05: 1280 x 720 with the sheet about 900 px wide) gets a landscape crop that the
+    recorder squashes to its square policy image. The caller checks the width still contains the
+    sheet.
     """
     px_per_m = math.sqrt(t_area_px / T_AREA_M2)
     side = int(math.ceil((max(sheet_size) + 2 * margin_m) * px_per_m))
-    side = min(side, image_size[0], image_size[1])
-    x0 = int(round(centroid_uv[0] - side / 2))
-    y0 = int(round(centroid_uv[1] - side / 2))
-    x0 = min(max(x0, 0), image_size[0] - side)
-    y0 = min(max(y0, 0), image_size[1] - side)
-    return (x0, y0, side, side), px_per_m
+    w, h = min(side, image_size[0]), min(side, image_size[1])
+    x0 = int(round(centroid_uv[0] - w / 2))
+    y0 = int(round(centroid_uv[1] - h / 2))
+    x0 = min(max(x0, 0), image_size[0] - w)
+    y0 = min(max(y0, 0), image_size[1] - h)
+    return (x0, y0, w, h), px_per_m
 
 
 def polygon_px(pose, px_per_m: float, centre_uv: tuple[float, float]) -> np.ndarray:
