@@ -259,9 +259,12 @@ needed and the real camera (P4.3) uses the same code and file format.
 With the scene playing and the arm parked away from the sheet, from the venv:
 
 ```bash
-python -m movensys_imitation_ros.setup_camera --mode sim --camera-height 0.70
+python -m movensys_imitation_ros.setup_camera --mode sim
 ```
 
+Since 2026-11-05 the camera is oblique (see `sim/isaacsim/README.md`), so do not pass
+`--camera-height`: its scale cross-check assumes a straight-down view. The pixel scale is taken
+from the T at the goal, so the pixel backend is exact at the goal and approximate away from it.
 It teleports the T to `goal_pose()`, waits 2 s, checks the published pose (2 mm, 1 deg), grabs
 one frame, finds the T with the `initial_threshold` of `config/dobot_cr3a/scorer.yaml`, fits a
 square crop around the goal (sheet plus 3 cm margin), refines the threshold from the T's own
@@ -299,6 +302,19 @@ python -m movensys_imitation_ros.scorer_validation --out results/sim/scorer_vali
 Teleports the T to 20 poses (the goal, 10 within 3 mm and 3 deg of it, 5 at 5 to 30 mm, 4 random
 starts), scores each with both backends and writes the CSV; PASS when every pose is valid and
 within 0.02. Unit tests: `pytest movensys_imitation/tests/test_pusht_scoring.py`.
+
+**Oblique camera (2026-11-05), `results/sim/scorer_validation.csv`: FAIL as expected.** With the
+camera at 41 degrees from vertical the pixel backend reads 0.999 on the goal but is biased
+*upward* elsewhere: +0.014 to +0.030 within 3 mm of the goal, +0.07 to +0.19 at 5 to 30 mm, and
+two of the four random starts are flagged as occluded because the T's pixel area changes with its
+distance from the camera (0.80 and 0.84 of the reference). The two causes are perspective (pixels
+per metre vary from about 1000 at the far sheet edge to 1400 at the near edge) and the T's side
+faces, which the colour mask includes and which change with yaw. In sim this does not matter
+(the geometric backend is primary and the pixel score is only logged), but on the real robot the
+pixel score would overstate coverage near the 0.80 threshold. Before P4.3 either rectify the
+crop to the T's top-face plane with a homography and segment the top face only (sides a
+different colour), or add a straight-down scoring camera. The 2026-10-27 straight-down result
+(all 20 poses within 0.002) is in git history.
 
 ## Collection (P2.4)
 
@@ -377,14 +393,14 @@ time. `auto_start:=true` runs `n_episodes` back to back after the first `s`. Par
 `config/dobot_cr3a/recorder.yaml`.
 
 ```bash
-HF_HUB_OFFLINE=1 lerobot-dataset-viz --repo-id movensys/pusht_cr3a_sim_v1 --root datasets/movensys/pusht_cr3a_sim_v1 --episode-index 0
+HF_HUB_OFFLINE=1 lerobot-dataset-viz --repo-id movensys/pusht_cr3a_sim_v2 --root datasets/movensys/pusht_cr3a_sim_v2 --episode-index 0
 ```
 
 ### Checks for the done cell
 
 ```bash
 python -m movensys_imitation_ros.reset_check --n 10 --out results/sim/reset_check.csv
-python -m movensys_imitation_ros.replay_check --root datasets/movensys/pusht_cr3a_sim_v1 --out results/sim/replay_check.csv
+python -m movensys_imitation_ros.replay_check --root datasets/movensys/pusht_cr3a_sim_v2 --out results/sim/replay_check.csv
 ```
 
 `reset_check` needs only the scene: 10 teleports, each within 2 mm and 1 deg, and no motion

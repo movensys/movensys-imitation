@@ -67,12 +67,15 @@ ros2 param set /planar_guard require_deadman false
 ```
 
 
-## Feed for image hand camera
+## Camera feed
 source /opt/ros/jazzy/setup.bash
-ros2 run rqt_image_view rqt_image_view /image_hand/rgb
+ros2 run rqt_image_view rqt_image_view /image_top/rgb
 
 rqt 
 and load default perscpective
+
+The scene has one camera since 2026-11-05: the oblique top view (`/image_top/rgb`). The wrist
+camera and the gripper were removed because they hid the T.
 
 python3 - <<'EOF'
 import rclpy
@@ -95,23 +98,23 @@ ros2 launch movensys_imitation_ros scorer.launch.py mode:=sim
 
 ## Replay a saved episode
 
-Two ways. The dataset holds the top camera only (`observation.images.top`), plus state, action,
-joints, T pose and coverage; the hand camera is not recorded, so both feeds are only available
-in the live replay (B). The top camera is being moved to an oblique view (decided 2026-11-03,
-after measuring that the straight-down view loses the T behind the forearm for most of each
-push); episodes recorded before and after that change must not share a dataset root.
+Two ways. The dataset holds the top camera (`observation.images.top`), plus state, action,
+joints, T pose and coverage. The top camera moved to an oblique view on 2026-11-05 (decided
+2026-11-03, after measuring that the straight-down view loses the T behind the forearm for most
+of each push). The straight-down episodes (`pusht_cr3a_sim_v1`) were deleted on 2026-11-05;
+everything recorded with the oblique camera goes to `pusht_cr3a_sim_v2` (the recorder default).
 
 ### A. Offline viewer: what was recorded
 
 ```
-HF_HUB_OFFLINE=1 lerobot-dataset-viz --repo-id movensys/pusht_cr3a_sim_v1 \
-  --root datasets/movensys/pusht_cr3a_sim_v1 --episode-index 0
+HF_HUB_OFFLINE=1 lerobot-dataset-viz --repo-id movensys/pusht_cr3a_sim_v2 \
+  --root datasets/movensys/pusht_cr3a_sim_v2 --episode-index 0
 ```
 
 Opens a rerun window: the top-camera video, `observation.state` (tip x, y), `action`, the joints,
 `block_pose` and `coverage` per frame, with a time cursor. `--save 1 --output-dir <dir>` writes
 an `.rrd` file instead of opening the window. Episode indices are in
-`datasets/movensys/pusht_cr3a_sim_v1/meta/movensys_episodes.jsonl` (one line per episode, with
+`datasets/movensys/pusht_cr3a_sim_v2/meta/movensys_episodes.jsonl` (one line per episode, with
 seed, stop reason, success and end score).
 
 ### B. Live replay in Isaac Sim: the robot re-executes the recorded actions
@@ -123,13 +126,11 @@ manager is idle (do not press `s` during a replay). Drop the dead-man first (sim
 ros2 param set /planar_guard require_deadman false
 ```
 
-Open the two camera feeds (one terminal each) and keep RViz in the manipulator container for the
-arm:
+Open the camera feed and keep RViz in the manipulator container for the arm:
 
 ```
 source /opt/ros/jazzy/setup.bash
 ros2 run rqt_image_view rqt_image_view /image_top/rgb
-ros2 run rqt_image_view rqt_image_view /image_hand/rgb
 ```
 
 Replay one episode from the venv shell with the workspace sourced:
@@ -139,7 +140,7 @@ source install/setup.bash
 python -m movensys_imitation_ros.replay_check --episodes 0 --out /tmp/replay_0.csv
 ```
 
-Add `--root <other dataset>` for a dataset other than the default `pusht_cr3a_sim_v1`.
+Add `--root <other dataset>` for a dataset other than the default `pusht_cr3a_sim_v2`.
 
 ```
 ```

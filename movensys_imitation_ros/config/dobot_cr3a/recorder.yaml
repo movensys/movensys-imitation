@@ -3,8 +3,8 @@
 episode_recorder:
   ros__parameters:
     mode: sim                   # sim | real: picks the calibration directory
-    repo_id: movensys/pusht_cr3a_sim_v1
-    root: datasets/movensys/pusht_cr3a_sim_v1   # relative to the repo (MOVENSYS_IMITATION_ROOT)
+    repo_id: movensys/pusht_cr3a_sim_v2
+    root: datasets/movensys/pusht_cr3a_sim_v2   # relative to the repo (MOVENSYS_IMITATION_ROOT)
     fps: 10
     image_size: 256
     robot_type: dobot_cr3a

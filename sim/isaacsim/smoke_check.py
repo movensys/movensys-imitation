@@ -39,8 +39,6 @@ class Checker(Node):
             ("/clock", Clock),
             ("/image_top/rgb", Image),
             ("/image_top/camera_info", CameraInfo),
-            ("/image_hand/rgb", Image),
-            ("/image_hand/camera_info", CameraInfo),
             ("/pusht/t_block/pose", Pose),
         ):
             self.stamps[name] = []
@@ -64,7 +62,6 @@ class Checker(Node):
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--image", help="save the last /image_top/rgb frame here (.png via Pillow)")
-    ap.add_argument("--hand-image", help="save the last /image_hand/rgb frame here (.png)")
     ap.add_argument("--no-teleport", action="store_true")
     ap.add_argument("--window", type=float, default=5.0, help="seconds to measure rates over")
     args = ap.parse_args()
@@ -82,17 +79,12 @@ def main() -> int:
         ("/clock", 30, 400),
         ("/image_top/rgb", 20, 40),
         ("/image_top/camera_info", 20, 40),
-        ("/image_hand/rgb", 20, 40),
-        ("/image_hand/camera_info", 20, 40),
         ("/pusht/t_block/pose", 20, 40),
     ):
         r = node.rate(topic, args.window)
         check(f"{topic} rate", lo <= r <= hi, f"{r:.1f} Hz (expect {lo} to {hi})")
 
-    for ns, frame, save_to in (
-        ("/image_top", "camera_top_color_optical_frame", args.image),
-        ("/image_hand", "camera_hand_color_optical_frame", args.hand_image),
-    ):
+    for ns, frame, save_to in (("/image_top", "camera_top_color_optical_frame", args.image),):
         img = node.last.get(f"{ns}/rgb")
         if img is not None:
             check(

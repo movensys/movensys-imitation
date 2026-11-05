@@ -25,8 +25,8 @@ Frames
   ``/pusht/t_block/pose`` topic and ``geometry.py``: at yaw 0 the bar runs along +x on the +y
   side and the stem extends toward -y; the block sits on z = 0.
 * Pusher tip: origin at the *mount face*, the cylinder extends along +z for ``--tip-length``.
-  Under ``Link6`` the mount face is 0.14 m along +z (the end of the gripper body), so the asset is
-  placed with translate (0, 0, 0.14) and the tip bottom lands at 0.14 + length = 0.22 m.
+  Under ``Link6`` the mount face is the flange (the gripper is hidden since 2026-11-05), so the
+  asset is placed at the Link6 origin and the tip bottom lands at length = 0.22 m.
 """
 
 from __future__ import annotations
@@ -169,7 +169,7 @@ def make_pusher_tip(path: Path, length: float) -> None:
     set_xform(prim)
     prim.SetCustomDataByKey("pusht:radius_m", TIP_RADIUS)
     prim.SetCustomDataByKey("pusht:length_m", length)
-    prim.SetCustomDataByKey("pusht:link6_mount_z_m", 0.14)
+    prim.SetCustomDataByKey("pusht:link6_mount_z_m", 0.0)
 
     UsdGeom.Scope.Define(stage, "/pusher_tip/Looks")
     vis = color_material(stage, "/pusher_tip/Looks/tip_material", TIP_RGB)
@@ -192,7 +192,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--out-dir", type=Path, default=ASSETS)
     parser.add_argument(
-        "--tip-length", type=float, default=0.08, help="pusher tip cylinder length [m]"
+        "--tip-length", type=float, default=0.22, help="pusher tip rod length [m] (flange to tip bottom)"
     )
     args = parser.parse_args()
     args.out_dir.mkdir(parents=True, exist_ok=True)

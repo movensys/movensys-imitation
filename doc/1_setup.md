@@ -1,6 +1,6 @@
 # 1. Setup
 
-Host checked: Ubuntu 24.04, ROS 2 Jazzy (`/opt/ros/jazzy`), system Python 3.12.3, RTX 5090, Isaac Sim 5.1 in `~/isaac-sim`, WMX3 SDK in `/opt/wmx3`.
+Host checked: Ubuntu 24.04, ROS 2 Jazzy (`/opt/ros/jazzy`), system Python 3.12.3, RTX 5090, Isaac Sim 6.2 in `~/isaacsim/6.2`, WMX3 SDK in `/opt/wmx3`.
 
 ## 1.1 Python environment (plan task P0.2)
 
