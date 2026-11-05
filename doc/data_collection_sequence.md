@@ -101,8 +101,8 @@ ros2 launch movensys_imitation_ros scorer.launch.py mode:=sim
 Two ways. The dataset holds the top camera (`observation.images.top`), plus state, action,
 joints, T pose and coverage. The top camera moved to an oblique view on 2026-11-05 (decided
 2026-11-03, after measuring that the straight-down view loses the T behind the forearm for most
-of each push). Episodes from the old camera live in `pusht_cr3a_sim_v1`; everything recorded
-with the oblique camera goes to `pusht_cr3a_sim_v2` (the recorder default), never to the old root.
+of each push). The straight-down episodes (`pusht_cr3a_sim_v1`) were deleted on 2026-11-05;
+everything recorded with the oblique camera goes to `pusht_cr3a_sim_v2` (the recorder default).
 
 ### A. Offline viewer: what was recorded
 
@@ -140,8 +140,7 @@ source install/setup.bash
 python -m movensys_imitation_ros.replay_check --episodes 0 --out /tmp/replay_0.csv
 ```
 
-Add `--root <other dataset>` for a dataset other than the default `pusht_cr3a_sim_v2` (the old
-`pusht_cr3a_sim_v1` episodes replay fine, only their recorded images are from the old camera).
+Add `--root <other dataset>` for a dataset other than the default `pusht_cr3a_sim_v2`.
 
 ```
 ```
