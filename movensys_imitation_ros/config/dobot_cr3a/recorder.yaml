@@ -3,8 +3,8 @@
 episode_recorder:
   ros__parameters:
     mode: sim                   # sim | real: picks the calibration directory
-    repo_id: movensys/pusht_cr3a_sim_v2
-    root: datasets/movensys/pusht_cr3a_sim_v2   # relative to the repo (MOVENSYS_IMITATION_ROOT)
+    repo_id: movensys/pusht_cr3a_sim_v3
+    root: datasets/movensys/pusht_cr3a_sim_v3   # relative to the repo (MOVENSYS_IMITATION_ROOT)
     fps: 10
     image_size: 256
     robot_type: dobot_cr3a
@@ -32,7 +32,7 @@ episode_manager:
                                 # plan Section 5). Set a value to start elsewhere.
     n_episodes: 10              # with auto_start; 0 = until ~/abort
     auto_start: false           # true: after the first ~/start, run n_episodes back to back
-    success_threshold: 0.80         # project definition (scoring.SUCCESS_THRESHOLD); keep the two equal
+    success_threshold: 0.85         # project definition (scoring.SUCCESS_THRESHOLD); keep the two equal
     success_hold: 5             # consecutive /pusht/score samples at or above the threshold before
                                 # the episode ends on success (0.5 s at the scorer's 10 Hz)
     max_steps: 300              # frames at fps (30 s), as gym-pusht

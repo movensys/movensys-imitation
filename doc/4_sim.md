@@ -237,8 +237,8 @@ height from the home pose with `spacemouse_teleop` alone, the floor holds the ti
 
 ## Scorer (P2.3)
 
-Coverage is `area(T ∩ goal) / area(goal)` as in gym-pusht, success at 0.80 (the project
-definition since 2026-11-03, `scoring.SUCCESS_THRESHOLD`; gym-pusht itself uses 0.95); IoU is reported
+Coverage is `area(T ∩ goal) / area(goal)` as in gym-pusht, success at 0.85 (the project
+definition since 2026-11-05, 0.80 before that, `scoring.SUCCESS_THRESHOLD`; gym-pusht itself uses 0.95); IoU is reported
 next to it (the paper's metric). Two backends, both in
 `movensys_imitation/tasks/pusht/scoring.py` (no ROS, unit-tested against hand-computed cases and
 synthetic overhead frames):
@@ -311,7 +311,7 @@ distance from the camera (0.80 and 0.84 of the reference). The two causes are pe
 per metre vary from about 1000 at the far sheet edge to 1400 at the near edge) and the T's side
 faces, which the colour mask includes and which change with yaw. In sim this does not matter
 (the geometric backend is primary and the pixel score is only logged), but on the real robot the
-pixel score would overstate coverage near the 0.80 threshold. Before P4.3 either rectify the
+pixel score would overstate coverage near the 0.85 threshold. Before P4.3 either rectify the
 crop to the T's top-face plane with a homography and segment the top face only (sides a
 different colour), or add a straight-down scoring camera. The 2026-10-27 straight-down result
 (all 20 poses within 0.002) is in git history.
@@ -357,7 +357,7 @@ sessions then append without repeating start poses. Pass `seed_start:=<n>` to st
    `min_home_clearance` from the outline), teleport the T to `sample_start_pose(seed)` (2 mm,
    1 deg, three tries, then 0.5 s at rest), lower, `lower_settle`.
 2. **Record**: `episode_meta` set on the recorder, guard source back to `teleop_source`
-   (`stick`), recorder `~/start`. Stops once coverage >= 0.80 (`/pusht/score` field 0) has
+   (`stick`), recorder `~/start`. Stops once coverage >= 0.85 (`/pusht/score` field 0) has
    held for `success_hold` consecutive samples (5, i.e. 0.5 s at the scorer's 10 Hz: a T still
    sliding through the goal does not end the episode), on `max_steps` (300 frames) or on
    `~/stop` / `~/discard`.
@@ -393,14 +393,14 @@ time. `auto_start:=true` runs `n_episodes` back to back after the first `s`. Par
 `config/dobot_cr3a/recorder.yaml`.
 
 ```bash
-HF_HUB_OFFLINE=1 lerobot-dataset-viz --repo-id movensys/pusht_cr3a_sim_v2 --root datasets/movensys/pusht_cr3a_sim_v2 --episode-index 0
+HF_HUB_OFFLINE=1 lerobot-dataset-viz --repo-id movensys/pusht_cr3a_sim_v3 --root datasets/movensys/pusht_cr3a_sim_v3 --episode-index 0
 ```
 
 ### Checks for the done cell
 
 ```bash
 python -m movensys_imitation_ros.reset_check --n 10 --out results/sim/reset_check.csv
-python -m movensys_imitation_ros.replay_check --root datasets/movensys/pusht_cr3a_sim_v2 --out results/sim/replay_check.csv
+python -m movensys_imitation_ros.replay_check --root datasets/movensys/pusht_cr3a_sim_v3 --out results/sim/replay_check.csv
 ```
 
 `reset_check` needs only the scene: 10 teleports, each within 2 mm and 1 deg, and no motion

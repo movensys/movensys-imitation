@@ -32,8 +32,8 @@ JOINT_NAMES = tuple(f"joint{i}" for i in range(1, 7))
 
 @dataclass
 class RecorderConfig:
-    repo_id: str = "movensys/pusht_cr3a_sim_v2"
-    root: Path = Path("datasets/movensys/pusht_cr3a_sim_v2")
+    repo_id: str = "movensys/pusht_cr3a_sim_v3"
+    root: Path = Path("datasets/movensys/pusht_cr3a_sim_v3")
     fps: int = 10
     image_size: int = 256
     robot_type: str = "dobot_cr3a"
