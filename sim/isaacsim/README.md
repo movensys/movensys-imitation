@@ -76,8 +76,10 @@ default `-0.03 -0.05`), `--jetson-xy X Y` (where the Jetson box goes, default `0
   bottom is 0.22 m from the `Link6` origin, so the guard's z setpoint for a tip 10 mm above the
   table is **0.2731 m** (in `scene_9a.json`). Until 2026-11-05 the rod ran from 0.14 m, below
   the gripper body; the bottom did not move, so `task.yaml` and the guard are unchanged.
-* **Hidden robot parts**: `Link6/bracket/gripper` (the gripper body, a visual-only prim of the
-  robot payload) is deactivated, and so are the `visuals` and `collisions` children of
+* **Hidden robot parts**: the gripper housing and its black mounting plate, which the payload
+  composes as `Link6/visuals/{gripper,bracket}` and `Link6/collisions/{gripper,bracket}`, are
+  deactivated (the `visuals` and `collisions` prims are instanceable in the payload, so the
+  build de-instances them first), and so are the `visuals` and `collisions` children of
   `picker_1` and `picker_2`: the finger colliders reached down to the T's height and knocked it
   about in the first episodes recorded without the gripper (2026-11-05). The finger bodies, their
   prismatic joints, `/joint_states` and the gripper service are unchanged. MoveIt's collision
