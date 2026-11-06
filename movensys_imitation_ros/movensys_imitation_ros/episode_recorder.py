@@ -120,8 +120,8 @@ class EpisodeRecorder(Node):
     def _declare_parameters(self) -> dict:
         defaults = {
             "mode": "sim",
-            "repo_id": "movensys/pusht_cr3a_sim_v2",
-            "root": "datasets/movensys/pusht_cr3a_sim_v2",
+            "repo_id": "movensys/pusht_cr3a_sim_v3",
+            "root": "datasets/movensys/pusht_cr3a_sim_v3",
             "fps": 10,
             "image_size": 256,
             "robot_type": "dobot_cr3a",

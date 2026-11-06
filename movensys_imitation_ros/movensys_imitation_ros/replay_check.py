@@ -10,7 +10,7 @@ only) or hold the grip. The driver runs on ``/clock`` like the guard in sim; pas
 ``--wall-clock`` on the real robot.
 Run from the venv with the scene playing, the guard and the scorer up::
 
-    python -m movensys_imitation_ros.replay_check --root datasets/movensys/pusht_cr3a_sim_v2 \
+    python -m movensys_imitation_ros.replay_check --root datasets/movensys/pusht_cr3a_sim_v3 \
         --out results/sim/replay_check.csv
 
 Tolerances (plan P2.4 criterion made numeric): coverage within 0.05, junction within 10 mm,
@@ -105,8 +105,8 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    ap.add_argument("--repo-id", default="movensys/pusht_cr3a_sim_v2")
-    ap.add_argument("--root", type=Path, default=Path("datasets/movensys/pusht_cr3a_sim_v2"))
+    ap.add_argument("--repo-id", default="movensys/pusht_cr3a_sim_v3")
+    ap.add_argument("--root", type=Path, default=Path("datasets/movensys/pusht_cr3a_sim_v3"))
     ap.add_argument("--episodes", type=int, nargs="*", help="episode indices (default: all)")
     ap.add_argument("--out", type=Path, default=Path("results/sim/replay_check.csv"))
     ap.add_argument("--tol-coverage", type=float, default=0.05)

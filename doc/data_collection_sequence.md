@@ -7,11 +7,6 @@ mros ros2 launch movensys_manipulator_moveit_config sim_bridge.launch.py simulat
 ## Start Moveit2
 mros ros2 launch movensys_manipulator_moveit_config moveit.launch.py use_sim_time:=true
 
-## Close the gripper
-source /opt/ros/jazzy/setup.bash
-ros2 service call /wmx/set_gripper std_srvs/srv/SetBool "{data: true}"    # close
-
-ros2 service call /wmx/set_gripper std_srvs/srv/SetBool "{data: false}"   # open
 
 ## Park rod at push height 
 
@@ -102,19 +97,21 @@ Two ways. The dataset holds the top camera (`observation.images.top`), plus stat
 joints, T pose and coverage. The top camera moved to an oblique view on 2026-11-05 (decided
 2026-11-03, after measuring that the straight-down view loses the T behind the forearm for most
 of each push). The straight-down episodes (`pusht_cr3a_sim_v1`) were deleted on 2026-11-05;
-everything recorded with the oblique camera goes to `pusht_cr3a_sim_v2` (the recorder default).
+the first oblique-camera episodes went to `pusht_cr3a_sim_v2` at a 0.80 success threshold. Since
+2026-11-05 the threshold is 0.85 and the recorder default is `pusht_cr3a_sim_v3`; `v2` is kept
+as is and not extended.
 
 ### A. Offline viewer: what was recorded
 
 ```
-HF_HUB_OFFLINE=1 lerobot-dataset-viz --repo-id movensys/pusht_cr3a_sim_v2 \
-  --root datasets/movensys/pusht_cr3a_sim_v2 --episode-index 0
+HF_HUB_OFFLINE=1 lerobot-dataset-viz --repo-id movensys/pusht_cr3a_sim_v3 \
+  --root datasets/movensys/pusht_cr3a_sim_v3 --episode-index 0
 ```
 
 Opens a rerun window: the top-camera video, `observation.state` (tip x, y), `action`, the joints,
 `block_pose` and `coverage` per frame, with a time cursor. `--save 1 --output-dir <dir>` writes
 an `.rrd` file instead of opening the window. Episode indices are in
-`datasets/movensys/pusht_cr3a_sim_v2/meta/movensys_episodes.jsonl` (one line per episode, with
+`datasets/movensys/pusht_cr3a_sim_v3/meta/movensys_episodes.jsonl` (one line per episode, with
 seed, stop reason, success and end score).
 
 ### B. Live replay in Isaac Sim: the robot re-executes the recorded actions
@@ -140,7 +137,7 @@ source install/setup.bash
 python -m movensys_imitation_ros.replay_check --episodes 0 --out /tmp/replay_0.csv
 ```
 
-Add `--root <other dataset>` for a dataset other than the default `pusht_cr3a_sim_v2`.
+Add `--root <other dataset>` for a dataset other than the default `pusht_cr3a_sim_v3`.
 
 ```
 ```

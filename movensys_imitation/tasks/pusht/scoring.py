@@ -32,9 +32,10 @@ from shapely.geometry import Polygon
 
 from movensys_imitation.tasks.pusht import geometry as g
 
-SUCCESS_THRESHOLD = 0.80
-"""Coverage at or above this is a success: the project definition, decided 2026-11-03 (a partial
-push that lands most of the T counts). gym-pusht's own threshold is 0.95; the Phase 1 gym
+SUCCESS_THRESHOLD = 0.85
+"""Coverage at or above this is a success: the project definition, raised from 0.80 to 0.85 on
+2026-11-05 for the ``pusht_cr3a_sim_v3`` collection (0.80 since 2026-11-03: a partial push that
+lands most of the T counts). gym-pusht's own threshold is 0.95; the Phase 1 gym
 benchmark (``benchmark.py``) keeps that for comparability with the published numbers. The
 scorer's ``success`` field, the recorder's time-to-success and the manager's stop rule all read
 this constant, so it is changed here and nowhere else."""

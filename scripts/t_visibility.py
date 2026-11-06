@@ -5,7 +5,7 @@ segmented with the sim calibration's colour threshold and its area is compared w
 reference area scaled to the policy image. Prints, per episode, the fraction of frames with the
 T under 85 % and under 50 % visible, and the same over all frames. Run from the venv::
 
-    python scripts/t_visibility.py --root datasets/movensys/pusht_cr3a_sim_v2 [--episodes 0 1 2]
+    python scripts/t_visibility.py --root datasets/movensys/pusht_cr3a_sim_v3 [--episodes 0 1 2]
 
 The straight-down camera (dataset v1, 2026-11-03) had the T under 50 % visible in 56 to 67 % of
 the pushing frames; the oblique camera (v2) is expected to be well under 20 %.
@@ -28,8 +28,8 @@ DEFAULT_CAL = ROOT / "movensys_imitation_ros/config/dobot_cr3a/calibration/sim"
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--root", type=Path, default=ROOT / "datasets/movensys/pusht_cr3a_sim_v2")
-    ap.add_argument("--repo-id", default="movensys/pusht_cr3a_sim_v2")
+    ap.add_argument("--root", type=Path, default=ROOT / "datasets/movensys/pusht_cr3a_sim_v3")
+    ap.add_argument("--repo-id", default="movensys/pusht_cr3a_sim_v3")
     ap.add_argument("--calibration", type=Path, default=DEFAULT_CAL)
     ap.add_argument("--episodes", type=int, nargs="*", help="default: all")
     ap.add_argument("--open-px", type=int, default=3, help="opening kernel at 256 px (scorer: 5 at full res)")
