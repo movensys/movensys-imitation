@@ -7,11 +7,6 @@ mros ros2 launch movensys_manipulator_moveit_config sim_bridge.launch.py simulat
 ## Start Moveit2
 mros ros2 launch movensys_manipulator_moveit_config moveit.launch.py use_sim_time:=true
 
-## Close the gripper
-source /opt/ros/jazzy/setup.bash
-ros2 service call /wmx/set_gripper std_srvs/srv/SetBool "{data: true}"    # close
-
-ros2 service call /wmx/set_gripper std_srvs/srv/SetBool "{data: false}"   # open
 
 ## Park rod at push height 
 
