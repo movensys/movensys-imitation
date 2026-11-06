@@ -5,7 +5,7 @@ policy_runner:
   ros__parameters:
     mode: sim
     pretrained: ""              # checkpoint directory (.../checkpoints/last/pretrained_model), relative to the repo
-    policy_overrides: [""]      # e.g. ["--policy.noise_scheduler_type=DDIM", "--policy.num_inference_steps=10"]
+    policy_overrides: ""        # space-separated, e.g. "--policy.noise_scheduler_type=DDIM --policy.num_inference_steps=10"
     device: ""                  # empty: the checkpoint's device (cuda)
     run_mode: slow              # shadow | slow | normal
     slow_step: 0.010            # m per tick the target may lead the tip in slow mode (0.1 m/s)

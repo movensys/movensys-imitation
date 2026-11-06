@@ -518,3 +518,13 @@ table: `success`, `final_coverage`, `wall_seconds` per seed. Seeds 2000 and up k
 evaluation start poses apart from the collection seeds (1000 and up). Dry run without the
 simulator: a fake camera and `eef_source topic` were used on 2026-11-06 to verify the 10 Hz
 target stream, the slow-mode limit and the recorder gate.
+
+First live run, 2026-11-06, Flow Matching seed 1 at 20 k steps, Euler 4, slow mode, dataset
+`eval_flow_matching_v3_s1`: the runner had died at launch (a one-element `policy_overrides`
+list was serialised as a string; the parameter is a space-separated string since), so episodes
+0 to 6 (seeds 2000 to 2006) have no policy motion and are not results. The three driven
+episodes all ended on the 300-frame limit: seed 2007 coverage 0.61 (peak 0.63), seed 2008 0.78
+(peak 0.83), seed 2009 0.00 (the T was pushed off the goal). No success at 0.85, as expected
+from 60 training episodes, but the policy pushes the T toward the goal in two of three starts.
+No stale frames or faults in the runner log; the tick runs at 10 Hz sim time (about 6.7 Hz
+wall, Isaac at 0.6 real time).

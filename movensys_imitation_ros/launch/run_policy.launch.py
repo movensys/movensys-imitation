@@ -34,7 +34,6 @@ def launch_setup(context):
     task_yaml = os.path.join(config, "task.yaml")
     common = sim_time_and_mode(context)
     dataset = perform(context, LaunchConfiguration("dataset"))
-    overrides = [s for s in perform(context, LaunchConfiguration("overrides")).split() if s]
     return [
         venv_process(
             context, "pusht_scorer", [task_yaml, os.path.join(config, "scorer.yaml")], common
@@ -64,7 +63,7 @@ def launch_setup(context):
             {
                 **common,
                 "pretrained": LaunchConfiguration("pretrained"),
-                "policy_overrides": overrides or [""],
+                "policy_overrides": LaunchConfiguration("overrides"),
                 "run_mode": LaunchConfiguration("run_mode"),
                 "trigger": LaunchConfiguration("trigger"),
             },

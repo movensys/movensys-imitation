@@ -76,7 +76,7 @@ class PolicyRunnerNode(Node):
         pretrained = resolve_path(p["pretrained"])
         if not pretrained.exists():
             raise FileNotFoundError(f"pretrained checkpoint {pretrained} not found")
-        overrides = tuple(s for s in p["policy_overrides"] if s)
+        overrides = tuple(p["policy_overrides"].split())  # space-separated string
         from movensys_imitation.inference import PolicyRunner  # torch import after rclpy init
 
         self.runner = PolicyRunner(pretrained, overrides, device=p["device"] or None)
@@ -115,7 +115,7 @@ class PolicyRunnerNode(Node):
         defaults = {
             "mode": "sim",
             "pretrained": "",
-            "policy_overrides": [""],
+            "policy_overrides": "",      # space-separated, e.g. "--policy.fm_num_steps=4"
             "device": "",
             "run_mode": "slow",
             "slow_step": 0.010,          # m per tick in slow mode (0.1 m/s at 10 Hz)
