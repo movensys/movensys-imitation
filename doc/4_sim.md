@@ -414,3 +414,107 @@ junction within 10 mm, yaw within 5 deg. Exact agreement is not expected: the re
 the 10 Hz target linearly interpolated, not the original 50 Hz stream, and PhysX contact is not
 bit-reproducible. Unit tests: `pytest movensys_imitation_ros/test` (`test_recorder_core.py`,
 `test_manager_core.py`, the lift ramp in `test_guard_core.py`).
+
+## Training on sim data and the policy runner (P2.7 pilot, P2.8)
+
+First pass on 2026-11-06 with the 65 episodes of `pusht_cr3a_sim_v3` (50 successes, 15
+failures, 15 680 frames) to prove the train-and-run loop before the 150 to 200 episode
+collection of P2.6. Everything runs in the host venv (`source env.bash`).
+
+### Training
+
+`movensys_imitation/configs/pusht_sim.yaml` is the stage 2 task fragment: the v3 dataset with
+episodes 60 to 64 held out, 20 k steps at batch 64, checkpoints every 5 k, no env eval (the gym
+env does not match the Isaac scene; evaluation is the runner below). The frozen Phase 1 policy
+fragments expect the gym 96 x 96 frame with an 84 x 84 random crop, so the task fragment adds
+`resize_shape [96, 96]` and `crop_ratio 0.875` for the recorder's 256 x 256 frames, exactly as
+the converted-gym run did (`doc/3_gym_pusht.md`). The task file goes **last** so these override
+the policy file. `observation.joints` is also a LeRobot state feature but Diffusion, Flow
+Matching and ACT read only `observation.state`, so no feature filtering is needed.
+
+```bash
+movensys-train --config_path=movensys_imitation/configs/diffusion.yaml,movensys_imitation/configs/pusht_sim.yaml \
+    --seed=1 --output_dir=outputs/sim/diffusion_v3_s1
+movensys-train --config_path=movensys_imitation/configs/flow_matching.yaml,movensys_imitation/configs/pusht_sim.yaml \
+    --seed=1 --output_dir=outputs/sim/flow_matching_v3_s1
+```
+
+About 15 steps/s alone and 8 steps/s with two runs sharing the 5090 (Isaac open at the same
+time); a 1000-step smoke run (`outputs/sim/smoke_diffusion_v3`) reached loss 0.038. Use a fresh
+`output_dir` per run.
+
+### Offline check before any robot motion
+
+`scripts/offline_check.py` replays the held-out episodes frame by frame through
+`movensys_imitation.inference.PolicyRunner` (the checkpoint's own pre/post processors, the same
+class the ROS runner uses) and compares the predicted target with the recorded action:
+
+```bash
+HF_HUB_OFFLINE=1 python scripts/offline_check.py outputs/sim/diffusion_v3_s1/checkpoints/last/pretrained_model \
+    --policy.noise_scheduler_type=DDIM --policy.num_inference_steps=10 --out results/sim/offline_check_diffusion_s1.csv
+HF_HUB_OFFLINE=1 python scripts/offline_check.py outputs/sim/flow_matching_v3_s1/checkpoints/last/pretrained_model \
+    --policy.fm_num_steps=4 --out results/sim/offline_check_flow_matching_s1.csv
+```
+
+Reading the numbers: the recorded action is the guarded target, which leads the tip by up to
+30 mm (`eef_distance_limit`), so "hold still" (predict the current state) scores 20 mm mean
+error on episodes 60 and 64 and "repeat the last action" 7 mm. A checkpoint has learnt
+something once it beats 20 mm; a constant bias or errors near the action range (600 mm) mean a
+normalisation, crop or orientation bug. The smoke checkpoint (1000 steps) scored 39 mm with no
+bias, i.e. the pipeline is wired correctly and the policy is untrained. Because pushes are
+multimodal, the script also prints the direction agreement: the fraction of frames whose
+predicted displacement from the tip is within 45 deg of the recorded one (chance 0.25; the
+repeat-last-action baseline scores 0.97). Per-frame CSV and a JSON summary go next to `--out`.
+
+First results, 2026-11-06, seed 1, five held-out episodes (1095 frames), hold-still baseline
+21.0 mm on the same frames (`results/sim/offline_check_*_s1.json`):
+
+| Checkpoint | Diffusion DDIM 10: mean err / dir. agreement | Flow Matching Euler 4: mean err / dir. agreement |
+|---|---|---|
+| 5 k | 30.7 mm / 0.42 | 29.1 mm / - |
+| 10 k | 30.5 mm / 0.42 | 25.0 mm / 0.49 |
+| 15 k | 25.7 mm / 0.51 | 24.5 mm / 0.52 |
+| 20 k | 24.7 mm / 0.53 | 24.8 mm / 0.50 |
+
+Both learn (agreement rises steadily, bias stays under 3 mm) but with 60 training episodes they
+do not yet beat the hold-still error, as expected at this data size; the sim run below is the
+real test. Call latency after warm-up: median under 1 ms (queued chunk), p95 61 ms for DDIM 10
+and 26 ms for Euler 4, so the 10 Hz budget holds.
+
+### Policy runner (P2.8)
+
+`policy_runner` (venv, `python -m`) closes the loop through the planar guard in `pose` source:
+every 10 Hz tick (node clock) it crops and resizes the overhead frame exactly as the recorder
+does, shifts the Link6 position into the sheet frame, calls the policy and publishes the next
+target on `/pusht/target_raw` in the planning frame. The raw prediction always goes to
+`/pusht/policy_target`. Modes (`run_mode`): `shadow` publishes only `/pusht/policy_target`
+while an operator drives on the stick; `slow` pulls each target to within `slow_step` (10 mm,
+0.1 m/s) of the tip; `normal` publishes the policy output. The guard's limits (5 mm per 50 Hz
+cycle, 30 mm lead, area clamp) apply in every mode. The runner is gated by
+`/episode_recorder/state`: it resets the policy history on `recording:0`, runs while recording
+and stays silent otherwise, so the episode manager keeps the whole episode (reset, lift,
+teleport, scoring, saving) and the manager's own `go_to` targets never collide with the policy's.
+`trigger: always` drives without the manager (guard in `pose` source, for a quick look).
+The first `select_action` after loading takes about 1 s (CUDA start-up), so `PolicyRunner`
+warms up with three dummy calls; afterwards a call takes 6 to 100 ms (the long one every
+`n_action_steps` ticks, DDIM 10), which is why `max_image_age` is 0.3 s here against the
+recorder's 0.15 s. Parameters: `config/dobot_cr3a/runner.yaml`; unit tests
+`test_runner_core.py` (gate, step limit, clamp, frame shift).
+
+```bash
+ros2 launch movensys_imitation_ros run_policy.launch.py mode:=sim \
+    pretrained:=outputs/sim/diffusion_v3_s1/checkpoints/last/pretrained_model \
+    overrides:="--policy.noise_scheduler_type=DDIM --policy.num_inference_steps=10" \
+    run_mode:=slow dataset:=eval_diffusion_v3_s1 seed_start:=2000 n_episodes:=10 auto_start:=true
+python -m movensys_imitation_ros.collect_keys      # s starts the first episode; a aborts
+ros2 topic echo /policy_runner/state               # idle | running:<n> | stale | fault:<why>
+```
+
+Preconditions as for `collect.launch.py` (scene playing, `sim_bridge` and MoveIt up, no teleop
+node); the launch starts the guard in `pose` source and the manager with `teleop_source pose`
+and `input_device policy`. Episodes are recorded like demonstrations into
+`datasets/movensys/<dataset>`, so the sidecar (`meta/movensys_episodes.jsonl`) is the result
+table: `success`, `final_coverage`, `wall_seconds` per seed. Seeds 2000 and up keep the
+evaluation start poses apart from the collection seeds (1000 and up). Dry run without the
+simulator: a fake camera and `eef_source topic` were used on 2026-11-06 to verify the 10 Hz
+target stream, the slow-mode limit and the recorder gate.
