@@ -1,0 +1,22 @@
+# policy_runner parameters (plan P2.8). Area, frames and rates come from task.yaml; the image
+# crop from config/dobot_cr3a/calibration/<mode>/ (the recorder's). The checkpoint and its
+# inference overrides are launch arguments (run_policy.launch.py pretrained:=... overrides:=...).
+policy_runner:
+  ros__parameters:
+    mode: sim
+    pretrained: ""              # checkpoint directory (.../checkpoints/last/pretrained_model), relative to the repo
+    policy_overrides: ""        # space-separated, e.g. "--policy.noise_scheduler_type=DDIM --policy.num_inference_steps=10"
+    device: ""                  # empty: the checkpoint's device (cuda)
+    run_mode: slow              # shadow | slow | normal
+    slow_step: 0.010            # m per tick the target may lead the tip in slow mode (0.1 m/s)
+    trigger: recorder           # recorder: act while /episode_recorder/state is recording:<n>; always
+    area_margin: 0.0            # m inside the push-area edge; the guard clamps anyway
+    image_size: 256
+    calibration_dir: ""         # empty: <share>/config/dobot_cr3a/calibration/<mode>
+    max_image_age: 0.3          # s; wider than the recorder's 0.15: an inference tick takes up to 100 ms
+                                # (DDIM 10) and the camera runs at about 22 Hz, a skipped tick costs more
+    image_topic: /image_top/rgb
+    target_topic: /pusht/target_raw
+    recorder_state_topic: /episode_recorder/state
+    eef_source: tf
+    eef_pose_topic: /wmx/moveit2/eef_pose

@@ -1,0 +1,26 @@
+{
+  "pretrained": "outputs/sim/flow_matching_v3_s1/checkpoints/last/pretrained_model",
+  "overrides": [
+    "--policy.fm_num_steps=4"
+  ],
+  "episodes": [
+    60,
+    61,
+    62,
+    63,
+    64
+  ],
+  "frames": 1095,
+  "mean_err_mm": 24.78446388244629,
+  "p95_err_mm": 63.34619903564453,
+  "bias_mm": [
+    0.810679018497467,
+    0.8437107801437378
+  ],
+  "direction_agreement": 0.5005224660397074,
+  "baseline_hold_mm": 20.982046127319336,
+  "baseline_repeat_mm": 7.505914688110352,
+  "baseline_repeat_direction_agreement": 0.9686520376175548,
+  "latency_ms_median": 0.4883719993813429,
+  "latency_ms_p95": 25.537888500184636
+}

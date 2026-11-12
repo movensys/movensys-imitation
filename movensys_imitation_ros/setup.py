@@ -46,7 +46,7 @@ setup(
             "collect_keys = movensys_imitation_ros.collect_keys:main",
             "replay_check = movensys_imitation_ros.replay_check:main",
             "reset_check = movensys_imitation_ros.reset_check:main",
-            # "policy_runner = movensys_imitation_ros.policy_runner:main",
+            "policy_runner = movensys_imitation_ros.policy_runner:main",
         ],
     },
 )

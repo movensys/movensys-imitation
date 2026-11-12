@@ -1,0 +1,26 @@
+# Stage 2 task config: Isaac Sim recordings of the CR3A (plan Section 5, Table R2).
+# Compose with a policy YAML, task file LAST so its policy fields override the frozen crop:
+#   movensys-train --config_path=movensys_imitation/configs/diffusion.yaml,movensys_imitation/configs/pusht_sim.yaml
+# The recorder stores 256 x 256 frames; the frozen Phase 1 policies expect the gym 96 x 96 frame
+# with an 84 x 84 random crop, so the image is resized to 96 first (crop_ratio 0.875 -> 84).
+# No env eval: the gym env does not match the Isaac scene. Evaluation is run_policy.launch.py (P2.8)
+# and eval_sim.py (P2.9) in Isaac.
+dataset:
+  repo_id: movensys/pusht_cr3a_sim_v3
+  root: datasets/movensys/pusht_cr3a_sim_v3
+  # Episodes 60 to 64 (4 successes, 1 failure) are held out for scripts/offline_check.py.
+  episodes: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+             20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
+             40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59]
+policy:
+  resize_shape: [96, 96]
+  crop_ratio: 0.875
+seed: 1000            # training seed; pass --seed per run
+steps: 20000
+batch_size: 64
+num_workers: 4
+env_eval_freq: 0
+save_freq: 5000
+log_freq: 100
+wandb:
+  enable: false
