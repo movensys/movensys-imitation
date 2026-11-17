@@ -6,6 +6,11 @@ spacemouse_teleop:
     twist_topic: /servo_node/delta_twist_cmds
     servo_switch_service: /servo_node/switch_command_type
     pose_target_topic: /servo_node/pose_target_cmds   # refuse to run while someone owns this
+    # Writers that keep an idle publisher on the pose topic and do not block while silent:
+    # moveit2_api (moveit.launch.py) opens one for its /wmx/servo_node/tool_pose bridge at
+    # startup. Any pose message actually seen within pose_traffic_window (s) still holds.
+    pose_writer_ignore: ["/moveit2_api"]
+    pose_traffic_window: 1.0
     gripper_service: /wmx/set_gripper
 
     # Twist frame: "" = task.planning_frame (world_manipulator, servo.yaml planning_frame);
@@ -14,8 +19,9 @@ spacemouse_teleop:
     stream_hz: 50.0
 
     # Motion mask: full | translation | rotation | planar (xy + yaw) | vertical | yaw.
-    # Runtime: ros2 param set /spacemouse_teleop motion_mode translation
-    motion_mode: full
+    # Set by the launch argument motion_mode (default full), not here: a node-scoped value in
+    # this file beats the launch's wildcard override, so motion_mode:=... was ignored. Runtime:
+    #   ros2 param set /spacemouse_teleop motion_mode translation
 
     # /spacenav/joy axes = [x, y, z, roll, pitch, yaw] -> twist (tx, ty, tz, rx, ry, rz), ROS
     # convention: x is the push away/toward the operator, y left/right, z up/down. A push also

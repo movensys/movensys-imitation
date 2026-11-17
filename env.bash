@@ -2,7 +2,7 @@
 # Source this in every terminal that runs this repo's nodes or training commands:
 #   source ~/workspaces/movensys-imitation/env.bash
 # Keeps the host, the containers and Isaac Sim on the same ROS domain (plan, Section 5).
-export ROS_DOMAIN_ID=0   # the project domain (2026-10-24 decision); ~/.bashrc, the containers and Isaac use 0
+export ROS_DOMAIN_ID=55   # the project domain (2026-10-24 decision); ~/.bashrc, the containers and Isaac use 55
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 export MANIPULATOR_MODEL=dobot_cr3a
 
