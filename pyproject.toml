@@ -10,7 +10,7 @@ readme = "README.md"
 license = { file = "LICENSE.txt" }
 requires-python = ">=3.12"
 authors = [{ name = "Mohsin Ali (MVSK)", email = "mali@movensys.com" }]
-# torch / torchvision are installed first from the cu128 index (scripts/setup_venv.sh);
+# torch / torchvision are installed first from the cu128 (x86) or cu130 (Jetson) index (scripts/setup_venv.sh);
 # LeRobot's own pins (torch >= 2.7, < 2.12) are then already satisfied.
 dependencies = [
     "lerobot[pusht,diffusers-dep,dataset,training]==0.6.1",
