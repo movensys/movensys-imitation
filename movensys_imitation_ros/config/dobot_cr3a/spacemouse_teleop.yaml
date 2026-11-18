@@ -6,6 +6,11 @@ spacemouse_teleop:
     twist_topic: /servo_node/delta_twist_cmds
     servo_switch_service: /servo_node/switch_command_type
     pose_target_topic: /servo_node/pose_target_cmds   # refuse to run while someone owns this
+    # Writers that keep an idle publisher on the pose topic and do not block while silent:
+    # moveit2_api (moveit.launch.py) opens one for its /wmx/servo_node/tool_pose bridge at
+    # startup. Any pose message actually seen within pose_traffic_window (s) still holds.
+    pose_writer_ignore: ["/moveit2_api"]
+    pose_traffic_window: 1.0
     gripper_service: /wmx/set_gripper
 
     # Twist frame: "" = task.planning_frame (world_manipulator, servo.yaml planning_frame);
@@ -14,8 +19,9 @@ spacemouse_teleop:
     stream_hz: 50.0
 
     # Motion mask: full | translation | rotation | planar (xy + yaw) | vertical | yaw.
-    # Runtime: ros2 param set /spacemouse_teleop motion_mode translation
-    motion_mode: full
+    # Set by the launch argument motion_mode (default full), not here: a node-scoped value in
+    # this file beats the launch's wildcard override, so motion_mode:=... was ignored. Runtime:
+    #   ros2 param set /spacemouse_teleop motion_mode translation
 
     # /spacenav/joy axes = [x, y, z, roll, pitch, yaw] -> twist (tx, ty, tz, rx, ry, rz), ROS
     # convention: x is the push away/toward the operator, y left/right, z up/down. A push also
@@ -25,21 +31,23 @@ spacemouse_teleop:
     # from you; fix yaw_deg / axis_sign until each axis agrees.
     axis_map: [0, 1, 2, 3, 4, 5]
     axis_sign: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-    yaw_deg: 0.0                  # rotate operator x, y (and roll, pitch) onto the robot base
+    yaw_deg: 90.0                 # rotate operator x, y (and roll, pitch) onto the robot base;
+                                  # 90: robot base +x points to the operator's right (real
+                                  # robot, 2026-11-17; -90 drove both x and y backwards)
     deadzone: 0.05                # per axis; the puck self-centres to exactly zero
     expo: 1.0
 
     # Speed. Servo's unitless scale is 0.4 m/s linear and 0.8 rad/s rotational
     # (movensys_manipulator_moveit_config servo.yaml), so a gain is a fraction of that:
     # 0.05 -> 2 cm/s and 2.3 deg/s at full deflection. Raise after the first runs.
-    linear_gain: 0.05
-    angular_gain: 0.05
+    linear_gain: 0.40
+    angular_gain: 0.40
 
     # Dead-man: hold a side key (spacenavd button number; 13 is the key chosen with
     # spacemouse_probe on the SpaceMouse Pro Wireless, confirmed 2026-10-30).
     # require_deadman turns it on and off (runtime: ros2 param set ... require_deadman false,
     # sim only).
-    require_deadman: true
+    require_deadman: false
     deadman_axis: -1
     deadman_button: 13
     deadman_threshold: 0.6

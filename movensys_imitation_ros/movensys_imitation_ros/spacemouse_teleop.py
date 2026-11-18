@@ -9,14 +9,20 @@ publishes the unitless twist to Servo in TWIST mode.
 Single writer: Servo has one owner at a time. This node refuses to switch Servo to TWIST
 while anything publishes on Servo's pose topic (the planar guard, ``quest_servo_teleop``) and
 holds, with state ``hold:pose_writer``, until that writer is gone; the guard switches Servo
-back to POSE when it starts, so stop this node first. Servo's own singularity and collision
-stops apply, but the table is not a collision object, so the tool floor here zeroes downward
-motion once ``Link6`` is at ``table_z + link6_to_tip_bottom + tip_floor_clearance`` (TF).
+back to POSE when it starts, so stop this node first. Nodes in ``pose_writer_ignore``
+(``moveit2_api``, whose tool-pose bridge keeps an idle publisher open for its whole life) do
+not block while silent, but any message actually seen on the pose topic within
+``pose_traffic_window`` holds the node the same way, from whichever writer.
+
+Servo's own singularity and collision stops apply, but the table is not a collision object,
+so the tool floor here zeroes downward motion once ``Link6`` is at
+``table_z + link6_to_tip_bottom + tip_floor_clearance`` (TF).
 
 Inputs
     /spacenav/joy                     sensor_msgs/Joy          6 axes; buttons: dead-man,
                                                                mode cycle, gripper
     TF planning_frame -> eef_frame                             tool floor
+    /servo_node/pose_target_cmds      geometry_msgs/PoseStamped traffic check only
 Outputs
     /servo_node/delta_twist_cmds      geometry_msgs/TwistStamped, 50 Hz while engaged
     ~/state                            std_msgs/String          "<state>:<reason>" on change
@@ -31,7 +37,7 @@ from __future__ import annotations
 import math
 import time
 
-from geometry_msgs.msg import TwistStamped
+from geometry_msgs.msg import PoseStamped, TwistStamped
 from moveit_msgs.srv import ServoCommandType
 from rcl_interfaces.msg import SetParametersResult
 import rclpy
@@ -76,6 +82,10 @@ class SpaceMouseTeleop(Node):
         self.mode_cycle_list: list[str] = list(p["mode_cycle_list"])
         self.gripper_button: int = p["gripper_button"]
         self.pose_topic: str = p["pose_target_topic"]
+        self.pose_writer_ignore: set[str] = {
+            "/" + n.strip("/") for n in p["pose_writer_ignore"] if n.strip("/")
+        }
+        self.pose_traffic_window: float = p["pose_traffic_window"]
         self.mode: str = p["motion_mode"]
         if self.mode not in MODES:
             raise ValueError(f"motion_mode must be one of {tuple(MODES)}, got {self.mode!r}")
@@ -106,6 +116,7 @@ class SpaceMouseTeleop(Node):
         self.joy_rx = -math.inf
         self.twist_mode_set = False
         self.pose_writers: list[str] = []
+        self.pose_rx = -math.inf
         self.gripper_closed = False
         self.last_state = ""
 
@@ -114,6 +125,8 @@ class SpaceMouseTeleop(Node):
         latched = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
         self.mode_pub = self.create_publisher(String, "~/mode", latched)
         self.create_subscription(Joy, p["joy_topic"], self._on_joy, 10)
+        # Ignored writers are only ignored while silent: any pose target on Servo's topic holds.
+        self.create_subscription(PoseStamped, self.pose_topic, self._on_pose_target, 10)
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
         self.switch_client = self.create_client(ServoCommandType, p["servo_switch_service"])
@@ -146,6 +159,8 @@ class SpaceMouseTeleop(Node):
             "twist_topic": "/servo_node/delta_twist_cmds",
             "servo_switch_service": "/servo_node/switch_command_type",
             "pose_target_topic": "/servo_node/pose_target_cmds",
+            "pose_writer_ignore": Parameter.Type.STRING_ARRAY,
+            "pose_traffic_window": 1.0,
             "gripper_service": "/wmx/set_gripper",
             "frame_id": "",
             "stream_hz": 50.0,
@@ -169,8 +184,11 @@ class SpaceMouseTeleop(Node):
             "z_floor_enabled": True,
             "tip_floor_clearance": 0.0,
         }
-        return {name: self.declare_parameter(name, default).value
-                for name, default in defaults.items()}
+        values = {name: self.declare_parameter(name, default).value
+                  for name, default in defaults.items()}
+        # A typed declaration without a value reads back None when no yaml sets it.
+        values["pose_writer_ignore"] = list(values["pose_writer_ignore"] or [])
+        return values
 
     def _on_set_parameters(self, params: list[Parameter]) -> SetParametersResult:
         for prm in params:
@@ -245,10 +263,18 @@ class SpaceMouseTeleop(Node):
             self.deadman_threshold,
         )
 
+    def _on_pose_target(self, _msg: PoseStamped) -> None:
+        self.pose_rx = time.monotonic()
+
+    def _pose_traffic(self) -> bool:
+        return time.monotonic() - self.pose_rx < self.pose_traffic_window
+
     def _refresh_pose_writers(self) -> None:
         self.pose_writers = [
-            f"{i.node_namespace.rstrip('/')}/{i.node_name}"
+            name
             for i in self.get_publishers_info_by_topic(self.pose_topic)
+            if (name := f"{i.node_namespace.rstrip('/')}/{i.node_name}")
+            not in self.pose_writer_ignore
         ]
 
     def _eef_z(self) -> float | None:
@@ -270,9 +296,10 @@ class SpaceMouseTeleop(Node):
         if self.twist_mode_set or not self.switch_client.service_is_ready():
             return
         self._refresh_pose_writers()
-        if self.pose_writers:
+        if self.pose_writers or self._pose_traffic():
+            owner = self.pose_writers or "pose targets arriving"
             self.get_logger().warning(
-                f"Servo pose topic owned by {self.pose_writers}; not switching to TWIST",
+                f"Servo pose topic owned by {owner}; not switching to TWIST",
                 throttle_duration_sec=10.0,
             )
             return
@@ -296,9 +323,10 @@ class SpaceMouseTeleop(Node):
     # --- control cycle ------------------------------------------------------------------------
 
     def _tick(self) -> None:
-        if self.pose_writers:
-            # The guard or the Quest teleop owns Servo (and has switched it to POSE): hold and
-            # re-switch once they are gone.
+        if self.pose_writers or self._pose_traffic():
+            # The guard or the Quest teleop owns Servo (and has switched it to POSE), or an
+            # ignored writer such as moveit2_api started streaming: hold and re-switch to TWIST
+            # once they are gone or silent.
             self.twist_mode_set = False
             self._publish_state("hold:pose_writer")
             return
