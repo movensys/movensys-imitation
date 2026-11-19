@@ -25,7 +25,12 @@ from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 
-from movensys_imitation_ros.launch_support import perform, sim_time_and_mode, venv_process
+from movensys_imitation_ros.launch_support import (
+    perform,
+    pose_estimator_processes,
+    sim_time_and_mode,
+    venv_process,
+)
 
 
 def launch_setup(context):
@@ -35,6 +40,7 @@ def launch_setup(context):
     common = sim_time_and_mode(context)
     dataset = perform(context, LaunchConfiguration("dataset"))
     return [
+        *pose_estimator_processes(context, config, common),
         venv_process(
             context, "pusht_scorer", [task_yaml, os.path.join(config, "scorer.yaml")], common
         ),

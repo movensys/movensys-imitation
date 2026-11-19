@@ -40,6 +40,8 @@ setup(
             # see doc/4_sim.md.
             "pusht_scorer = movensys_imitation_ros.pusht_scorer:main",
             "setup_camera = movensys_imitation_ros.setup_camera:main",
+            "setup_camera_pose = movensys_imitation_ros.setup_camera_pose:main",
+            "t_pose_estimator = movensys_imitation_ros.t_pose_estimator:main",
             "scorer_validation = movensys_imitation_ros.scorer_validation:main",
             "episode_recorder = movensys_imitation_ros.episode_recorder:main",
             "episode_manager = movensys_imitation_ros.episode_manager:main",

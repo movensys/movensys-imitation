@@ -21,7 +21,11 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch_ros.actions import Node
 
-from movensys_imitation_ros.launch_support import sim_time_and_mode, venv_process
+from movensys_imitation_ros.launch_support import (
+    pose_estimator_processes,
+    sim_time_and_mode,
+    venv_process,
+)
 
 
 def launch_setup(context):
@@ -30,6 +34,7 @@ def launch_setup(context):
     task_yaml = os.path.join(config, "task.yaml")
     common = sim_time_and_mode(context)
     return [
+        *pose_estimator_processes(context, config, common),
         venv_process(
             context, "pusht_scorer", [task_yaml, os.path.join(config, "scorer.yaml")], common
         ),

@@ -16,8 +16,10 @@ Services
     ~/score                  std_srvs/Trigger            fresh score of the latest frame as JSON
                                                          (episode end, after the arm retracts)
 
-The primary coverage and IoU (first two fields) come from the geometric backend in sim and from
-the pixel backend on the real robot (``primary: auto``); both backends are always in the message.
+The primary coverage and IoU (first two fields) come from the geometric backend (``primary:
+auto``); both backends are always in the message. The pose is Isaac's ground truth in sim and the
+``t_pose_estimator`` fit on the real robot: with the oblique camera the pixel backend overstates
+coverage near the goal (perspective, and the block's side faces counted as T; ``doc/4_sim.md``).
 """
 
 from __future__ import annotations
@@ -79,7 +81,7 @@ class PushtScorer(Node):
         self.mode = p["mode"]
         self.primary = p["primary"]
         if self.primary == "auto":
-            self.primary = "geometric" if self.mode == "sim" else "pixel"
+            self.primary = "geometric"
         self.image_stale = p["image_stale"]
         self.pose_stale = p["pose_stale"]
         self.log_period = p["log_period"]

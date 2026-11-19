@@ -1,0 +1,30 @@
+# t_pose_estimator parameters (real-robot scoring). The camera model comes from
+# config/dobot_cr3a/calibration/<mode>/camera.yaml, written by setup_camera_pose.
+t_pose_estimator:
+  ros__parameters:
+    mode: real
+    calibration_dir: ""          # empty: <share>/config/dobot_cr3a/calibration/<mode>
+    image_topic: /image_top/rgb
+    pose_topic: ""               # empty: real /pusht/t_block/pose, sim /pusht/t_block/pose_vision
+    rate_hz: 10.0
+    image_stale: 0.3             # s
+    estimator:
+      # Colours in OpenCV HSV (H 0..179, S 0..255, V 0..255). Measured 2026-11-19 under the lab
+      # lighting with exposure fixed: green block median (77, 216, 137); the red rod wraps hue 0.
+      block:
+        hue: [55, 95]
+        sat_min: 80
+        val: [20, 245]
+      occluder:                  # pixels of this colour (dilated) are unknown, not "no block"
+        hue: [170, 10]
+        sat_min: 100
+        val: [40, 255]
+      open_px: 3
+      occluder_dilate_px: 7
+      area_margin_m: 0.05        # search for the block in the push area plus this margin
+      roi_margin_px: 25
+      min_component_frac: 0.05
+      min_iou: 0.80              # publish only fits at least this good over the visible pixels
+      min_visible: 0.50          # ... and with at least this much of the block unoccluded
+      max_iter: 250
+      track_jump_m: 0.03
