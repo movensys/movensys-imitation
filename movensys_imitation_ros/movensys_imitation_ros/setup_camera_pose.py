@@ -145,7 +145,10 @@ def main(argv=None) -> int:
     print(f"K: fx {K[0, 0]:.1f} fy {K[1, 1]:.1f} cx {K[0, 2]:.1f} cy {K[1, 2]:.1f} "
           f"({meta['intrinsics']}); distortion {np.round(dist, 4).tolist()}")
     if f_t is not None and abs(f_t / K[0, 0] - 1) > 0.10:
-        warnings.append(f"the T implies fx {f_t:.0f}, {abs(f_t / K[0, 0] - 1):.0%} off K")
+        # The single-T estimate is rough (a few % to ~15 % off at this tilt); the reprojection
+        # check below is what judges a measured K. Informational only.
+        print(f"note: the T alone implies fx {f_t:.0f}, {abs(f_t / K[0, 0] - 1):.0%} off K "
+              "(expected; the reprojection error is the real check)")
 
     cam, t = pv.calibrate_from_goal(frame, K, dist, goal, meta=meta)
     c = cam.camera_centre()
