@@ -3,7 +3,9 @@ collect_keys: keyboard front end for the episode manager (P2.4).
 
 The manager runs under ``ros2 launch`` without a terminal, so keys live in this small client:
 ``s`` start the next episode, ``x`` stop and save the current one, ``d`` stop and discard,
-``a`` abort the run, ``q`` quit. Run from any sourced shell::
+``a`` abort the run, ``q`` quit. On the real robot the manager waits in ``reset:place`` for the
+T to be put on its start pose (``score_viewer`` shows it); ``s`` there means "placed, check it"
+and ``d`` gives the episode up. Run from any sourced shell::
 
     python -m movensys_imitation_ros.collect_keys
 """
@@ -35,6 +37,9 @@ class Keys(Node):
         if msg.data != self.state:
             self.state = msg.data
             print(f"\r[manager] {self.state}", end="\r\n", flush=True)
+            if self.state == "reset:place":
+                print("\rplace the T on the orange outline (score_viewer), hand away, then s "
+                      "(d gives up)", end="\r\n", flush=True)
 
     def send(self, cmd: str) -> None:
         client = self.clients_[cmd]

@@ -40,6 +40,10 @@ episode_manager:
     discard_on_timing_fault: true
     keep_failures: true         # P2.6 keeps successes only, using the sidecar's success flag
     lower_settle: 0.5           # s after the tool is down before recording starts
+    # Real robot: the operator places the T on the start pose and confirms with ~/start; the
+    # pose from t_pose_estimator must be this close before the tool lowers.
+    place_tolerance: 0.015      # m
+    place_tolerance_deg: 10.0
     scripted_deadman: false     # true: the grip must be held even for the manager's own lift,
                                 # home and lower moves (restored for teleop either way)
     pose_topic: /pusht/t_block/pose

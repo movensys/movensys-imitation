@@ -230,6 +230,34 @@ def area_roi(cam: CameraModel, margin: float = 0.05, sheet_size=g.SHEET_SIZE,
     return mask > 0, (int(x0), int(y0), int(x1 - x0), int(y1 - y0))
 
 
+def policy_crop(cam: CameraModel, margin: float = 0.03, sheet_size=g.SHEET_SIZE,
+                height: float = g.BLOCK_HEIGHT) -> tuple[int, int, int, int]:
+    """The policy image crop ``(x0, y0, w, h)`` for this camera: a square around the push area.
+
+    The real-robot counterpart of :func:`scoring.fit_crop`: the bounding box of the push area
+    plus ``margin`` metres (table to block top), grown to a square about its centre so the
+    recorder's resize does not distort it. Each side is capped by the frame, as in ``fit_crop``.
+    It is a function of ``camera.yaml`` alone, so the crop follows the sheet when the camera is
+    calibrated again. Raises ``ValueError`` when the area is not inside the frame.
+    """
+    hx, hy = sheet_size[0] / 2 + margin, sheet_size[1] / 2 + margin
+    corners = np.array([(-hx, -hy), (hx, -hy), (hx, hy), (-hx, hy)])
+    uv = np.vstack([cam.project(np.column_stack([corners, np.full(4, z)])) for z in (0.0, height)])
+    w_img, h_img = cam.image_size
+    lo, hi = uv.min(0), uv.max(0)
+    if lo[0] < 0 or lo[1] < 0 or hi[0] > w_img - 1 or hi[1] > h_img - 1:
+        raise ValueError(
+            f"the push area projects to u {lo[0]:.0f}..{hi[0]:.0f}, v {lo[1]:.0f}..{hi[1]:.0f}, "
+            f"outside the {w_img} x {h_img} frame; move the camera"
+        )
+    side = int(math.ceil(max(hi - lo))) + 1
+    w, h = min(side, w_img), min(side, h_img)
+    cx, cy = (lo + hi) / 2
+    x0 = min(max(int(round(cx - w / 2)), 0), w_img - w)
+    y0 = min(max(int(round(cy - h / 2)), 0), h_img - h)
+    return (x0, y0, w, h)
+
+
 # ------------------------------------------------------------------- goal-T calibration
 
 

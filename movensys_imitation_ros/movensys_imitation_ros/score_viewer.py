@@ -3,7 +3,9 @@ score_viewer: the overhead camera with the live coverage and IoU drawn on it.
 
 Shows ``/image_top/rgb`` with the goal outline in magenta and the block pose from
 ``/pusht/t_block/pose`` in yellow (both projected through ``camera.yaml``), and writes the first
-two fields of ``/pusht/score`` on top. ``--raw`` leaves the outlines out; ``--grid`` shows the
+two fields of ``/pusht/score`` on top. While the episode manager waits for the operator to place
+the T (real robot, ``reset:place``) the start pose from ``/pusht/start_pose`` is drawn in orange
+with the distance still to go. ``--raw`` leaves the outlines out; ``--grid`` shows the
 estimator's own ``/t_pose_estimator/debug`` image instead, which adds the push-area grid. Run
 from the venv next to ``scorer.launch.py``::
 
@@ -19,21 +21,24 @@ import math
 import time
 
 import cv2
-import rclpy
 from geometry_msgs.msg import Pose
+import rclpy
 from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import DurabilityPolicy, qos_profile_sensor_data, QoSProfile
 from sensor_msgs.msg import Image
-from std_msgs.msg import Float32MultiArray
+from std_msgs.msg import Float32MultiArray, String
 
 from movensys_imitation.tasks.pusht import geometry as g
 from movensys_imitation.tasks.pusht import pose_vision as pv
 from movensys_imitation.tasks.pusht import scoring as sc
+from movensys_imitation_ros import manager_core as mc
 from movensys_imitation_ros.pusht_scorer import default_calibration_dir, pose_to_tuple
 
 WINDOW = "pusht score"
 SCORE_STALE = 1.0  # s; older scores are shown as "no score"
 POSE_STALE = 0.5  # s; older block poses are not drawn
+STATE_PLACE = "reset:place"  # episode_manager: waiting for the operator to place the T
+START_RGB = (255, 140, 0)
 
 
 class ScoreViewer(Node):
@@ -48,8 +53,13 @@ class ScoreViewer(Node):
         self.score_t = -math.inf
         self.create_subscription(Image, image_topic, self._on_image, qos_profile_sensor_data)
         self.create_subscription(Float32MultiArray, "/pusht/score", self._on_score, 10)
+        self.start_pose: tuple[float, float, float] | None = None
+        self.placing = False
         if cam is not None:
+            latched = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
             self.create_subscription(Pose, "/pusht/t_block/pose", self._on_pose, 10)
+            self.create_subscription(Pose, "/pusht/start_pose", self._on_start_pose, latched)
+            self.create_subscription(String, "/episode_manager/state", self._on_manager, 10)
 
     def _on_image(self, msg: Image) -> None:
         try:
@@ -61,6 +71,12 @@ class ScoreViewer(Node):
         self.pose = pose_to_tuple(msg)
         self.pose_t = time.monotonic()
 
+    def _on_start_pose(self, msg: Pose) -> None:
+        self.start_pose = pose_to_tuple(msg)
+
+    def _on_manager(self, msg: String) -> None:
+        self.placing = msg.data == STATE_PLACE
+
     def _on_score(self, msg: Float32MultiArray) -> None:
         if len(msg.data) >= 3:
             self.score = (msg.data[0], msg.data[1], msg.data[2])
@@ -70,9 +86,17 @@ class ScoreViewer(Node):
         if self.frame is None:
             return None
         rgb = self.frame.copy()
+        place = None  # text for the operator while the manager waits for the T
         if self.cam is not None:
             pv.draw_block_outline(rgb, self.cam, g.goal_pose(), (255, 0, 255), 1, height=0.0)
-            if self.pose is not None and time.monotonic() - self.pose_t < POSE_STALE:
+            seen = self.pose is not None and time.monotonic() - self.pose_t < POSE_STALE
+            if self.placing and self.start_pose is not None:
+                pv.draw_block_outline(rgb, self.cam, self.start_pose, START_RGB, 2)
+                place = "place the T on the orange outline, then press s"
+                if seen:
+                    d, dyaw = mc.pose_difference(self.pose, self.start_pose)
+                    place = f"{d * 1000:.0f} mm, {math.degrees(dyaw):.0f} deg off; s when placed"
+            if seen:
                 pv.draw_block_outline(rgb, self.cam, self.pose, (255, 255, 0), 2)
         img = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
         fresh = self.score is not None and time.monotonic() - self.score_t < SCORE_STALE
@@ -87,6 +111,11 @@ class ScoreViewer(Node):
         cv2.rectangle(img, (10, 10), (400, 30 + 45 * len(lines)), (0, 0, 0), -1)
         for i, text in enumerate(lines):
             cv2.putText(img, text, (22, 55 + 45 * i), cv2.FONT_HERSHEY_SIMPLEX, 1.1, colour, 2,
+                        cv2.LINE_AA)
+        if place:
+            y = img.shape[0] - 20
+            cv2.rectangle(img, (10, y - 40), (img.shape[1] - 10, y + 10), (0, 0, 0), -1)
+            cv2.putText(img, place, (22, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.9, START_RGB[::-1], 2,
                         cv2.LINE_AA)
         if scale != 1.0:
             img = cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)

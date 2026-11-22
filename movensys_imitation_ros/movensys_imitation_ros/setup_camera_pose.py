@@ -4,8 +4,9 @@ setup_camera_pose: camera pose from the printed goal T, for the vision pose esti
 The printed goal T (dark on the light sheet) has 8 corners at known sheet coordinates
 (``geometry.goal_pose()``); ``solvePnP`` on them gives the camera pose in the sheet frame. The
 result goes to ``camera.yaml`` (intrinsics, distortion, pose, reprojection error) and
-``camera_overlay.png`` (push-area outline, 5 cm grid, goal T, detected corners, and the fitted
-block if one is in view) in the calibration directory, next to the pixel scorer's files.
+``camera_overlay.png`` (push-area outline, 5 cm grid, goal T, detected corners, the policy image
+crop in white, and the fitted block if one is in view) in the calibration directory, next to
+the pixel scorer's files.
 
 Run with the printed goal T fully visible: the block off the goal and the rod away from it.
 Run it again whenever the camera or the sheet moves. Intrinsics come from, in order: ``--fx``
@@ -162,8 +163,17 @@ def main(argv=None) -> int:
     if box[2] * box[3] == 0 or box[0] == 0 or box[1] == 0 or box[0] + box[2] >= w \
             or box[1] + box[3] >= h:
         warnings.append("the push area reaches the image edge; part of it is not visible")
+    crop = None
+    try:
+        crop = pv.policy_crop(cam)
+        print(f"policy image crop (x0, y0, w, h) = {crop} (recorder and policy runner)")
+    except ValueError as e:
+        warnings.append(f"no policy crop: {e}")
 
     overlay = frame.copy()
+    if crop is not None:
+        cv2.rectangle(overlay, crop[:2], (crop[0] + crop[2] - 1, crop[1] + crop[3] - 1),
+                      (255, 255, 255), 1)
     pv.draw_sheet(overlay, cam)
     pv.draw_block_outline(overlay, cam, goal, (255, 0, 255), 2, height=0.0)
     for p in t.corners:

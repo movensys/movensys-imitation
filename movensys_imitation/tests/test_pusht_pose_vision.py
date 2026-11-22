@@ -202,3 +202,50 @@ def test_config_from_dict():
     assert cfg.occluder == pv.default_occluder_threshold()
     with pytest.raises(KeyError):
         pv.estimator_config_from_dict({"nope": 1})
+
+
+# ------------------------------------------------------------------------- policy crop
+
+
+def test_policy_crop_is_a_square_that_contains_the_push_area(cam):
+    x0, y0, w, h = pv.policy_crop(cam)
+    assert w == h
+    assert x0 >= 0 and y0 >= 0 and x0 + w <= SIZE[0] and y0 + h <= SIZE[1]
+    hx, hy = g.SHEET_SIZE[0] / 2, g.SHEET_SIZE[1] / 2
+    corners = [(sx * hx, sy * hy, z) for sx in (-1, 1) for sy in (-1, 1)
+               for z in (0.0, g.BLOCK_HEIGHT)]
+    uv = cam.project(np.array(corners))
+    assert (uv[:, 0] >= x0).all() and (uv[:, 0] <= x0 + w - 1).all()
+    assert (uv[:, 1] >= y0).all() and (uv[:, 1] <= y0 + h - 1).all()
+
+
+def test_policy_crop_refuses_an_area_outside_the_frame():
+    near = pv.look_at_camera(SIZE, FX, (0.20, -0.05, 0.25))  # too close: the sheet overflows
+    with pytest.raises(ValueError, match="outside"):
+        pv.policy_crop(near)
+
+
+def test_load_image_crop_from_camera_yaml(cam, tmp_path):
+    with pytest.raises(FileNotFoundError):
+        sc.load_image_crop(tmp_path)
+    cam.save(tmp_path)
+    crop = sc.load_image_crop(tmp_path)
+    assert crop.source == pv.CAMERA_YAML
+    assert crop.image_size == SIZE and crop.crop == pv.policy_crop(cam)
+    frame = np.zeros((SIZE[1], SIZE[0], 3), np.uint8)
+    crop.check_frame(frame)
+    assert crop.apply_crop(frame).shape[:2] == (crop.crop[3], crop.crop[2])
+    with pytest.raises(ValueError):
+        crop.check_frame(np.zeros((720, 1280, 3), np.uint8))
+
+
+def test_load_image_crop_prefers_the_pixel_calibration(cam, tmp_path):
+    cam.save(tmp_path)
+    cal = sc.Calibration(
+        image_size=SIZE, crop=(10, 20, 300, 300), px_per_m=900.0, t_area_px=5000,
+        goal_mask=np.zeros((300, 300), bool), threshold=sc.HsvRange(),
+        t_hsv_median=(77, 216, 137), centre_uv=(150.0, 150.0),
+    )
+    cal.save(tmp_path)
+    crop = sc.load_image_crop(tmp_path)
+    assert crop.source == sc.CALIBRATION_YAML and crop.crop == (10, 20, 300, 300)

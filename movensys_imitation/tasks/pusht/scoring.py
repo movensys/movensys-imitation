@@ -320,6 +320,45 @@ class Calibration:
         )
 
 
+@dataclass
+class ImageCrop:
+    """The fixed crop of the overhead frame that becomes the policy image.
+
+    What the recorder and the policy runner need from a calibration directory, and nothing else:
+    ``source`` names the file the crop came from.
+    """
+
+    image_size: tuple[int, int]
+    crop: tuple[int, int, int, int]
+    source: str = ""
+
+    apply_crop = Calibration.apply_crop
+    check_frame = Calibration.check_frame
+
+
+def load_image_crop(directory: str | Path) -> ImageCrop:
+    """The policy crop of a calibration directory.
+
+    ``calibration.yaml`` (``setup_camera``: sim, and the datasets recorded so far) wins when it
+    is there; otherwise the crop is derived from ``camera.yaml`` (``setup_camera_pose``: the
+    real robot, which scores from the block pose and has no pixel calibration). Raises
+    ``FileNotFoundError`` when the directory has neither.
+    """
+    d = Path(directory)
+    if (d / CALIBRATION_YAML).exists():
+        doc = yaml.safe_load((d / CALIBRATION_YAML).read_text())
+        return ImageCrop(
+            tuple(int(x) for x in doc["image_size"]), tuple(int(x) for x in doc["crop"]),
+            CALIBRATION_YAML,
+        )
+    from movensys_imitation.tasks.pusht import pose_vision as pv  # imports this module
+
+    if not (d / pv.CAMERA_YAML).exists():
+        raise FileNotFoundError(f"neither {CALIBRATION_YAML} nor {pv.CAMERA_YAML} in {d}")
+    cam = pv.CameraModel.load(d)
+    return ImageCrop(tuple(cam.image_size), pv.policy_crop(cam), pv.CAMERA_YAML)
+
+
 def calibrate_from_frame(
     frame_rgb: np.ndarray,
     cfg: MaskConfig,

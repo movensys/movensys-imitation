@@ -6,20 +6,27 @@ farthest from the T's start footprint, teleport the T to ``sample_start_pose(see
 record (guard back to the teleop source, recorder ``~/start``), stop on coverage >= 0.95, on
 ``max_steps`` frames or on a service call, lift, take the authoritative score from the scorer
 service, then save or discard. Runs from the venv (``python -m``) and needs the guard, the
-scorer and the recorder; Isaac Sim provides the teleport in sim, the operator does it on the
-real robot (Phase 4 swaps the reset step).
+scorer and the recorder.
+
+On the real robot (``mode: real``) nothing can teleport the T, so the reset waits in
+``reset:place`` instead: the start pose goes out on ``/pusht/start_pose`` (``score_viewer`` draws
+it), the operator puts the T there by hand and confirms with ``~/start``, and the pose from
+``t_pose_estimator`` has to agree within ``place_tolerance`` before the tool lowers. A T that is
+off keeps the manager waiting; ``~/discard``, ``~/stop`` or ``~/abort`` give the episode up.
 
 The blocking :class:`Driver` helpers (lift, go_to, teleport, score) are shared with
 ``replay_check`` and ``reset_check``; the executor spins in the main thread while the episode
 sequence runs in a worker thread.
 
 Services (std_srvs/Trigger)
-    ~/start     run the next episode (with ``auto_start`` true, keep running ``n_episodes``)
+    ~/start     run the next episode (with ``auto_start`` true, keep running ``n_episodes``);
+                in ``reset:place``: the T is placed, check it and go on
     ~/stop      end the current episode now, score and save it
     ~/discard   end the current episode now and drop it
     ~/abort     finish or drop the current episode, then stop the run (tool stays lifted)
 Outputs
     ~/state     std_msgs/String   idle | reset:<step> | record:<n> | end:<step> | fault:<why>
+    /pusht/start_pose   geometry_msgs/Pose (latched)   real: where the operator puts the T
 """
 
 from __future__ import annotations
@@ -51,6 +58,8 @@ from movensys_imitation_ros.setup_camera import pose_error, pose_msg
 
 
 DISCOVERY_TIMEOUT = 30.0  # s to wait for Isaac to subscribe to pose_cmd
+STATE_PLACE = "reset:place"  # real robot: waiting for the operator to place the T
+START_POSE_TOPIC = "/pusht/start_pose"
 
 
 def spin_in_background(node: Node) -> threading.Thread:
@@ -110,6 +119,7 @@ class Driver(Node):
         self.target_pub = self.create_publisher(PoseStamped, "/pusht/target_raw", 10)
         self.path_pub = self.create_publisher(Path, "/pusht/waypoints", 10)
         self.teleport_pub = self.create_publisher(Pose, "/pusht/t_block/pose_cmd", 10)
+        self.start_pose_pub = self.create_publisher(Pose, START_POSE_TOPIC, latched)
         self.lift_client = self.create_client(SetBool, "/planar_guard/lift")
         self.score_client = self.create_client(Trigger, "/pusht_scorer/score")
         self.recorder_clients = {
@@ -380,6 +390,9 @@ class EpisodeManager(Driver):
         self.stop_requested = False
         self.discard_requested = False
         self.abort_requested = False
+        self.place_tolerance: float = p["place_tolerance"]
+        self.place_tolerance_rad = math.radians(p["place_tolerance_deg"])
+        self.confirm_event = threading.Event()
         self.state = ""
         self.state_pub = self.create_publisher(String, "~/state", 10)
         self.create_service(Trigger, "~/start", self._on_start)
@@ -412,6 +425,8 @@ class EpisodeManager(Driver):
             "discard_on_timing_fault": True,
             "keep_failures": True,
             "lower_settle": 0.5,
+            "place_tolerance": 0.015,  # m, real: hand-placed T against the start pose
+            "place_tolerance_deg": 10.0,
             "task.home_candidates": [v for xy in mc.HOME_CANDIDATES for v in xy],
             "task.area_center": [-0.03, -0.05],
             "task.rates.policy_hz": 10.0,
@@ -427,6 +442,11 @@ class EpisodeManager(Driver):
             self.get_logger().info(f"state {state}")
 
     def _on_start(self, _req, res: Trigger.Response) -> Trigger.Response:
+        if self.state == STATE_PLACE:
+            self.confirm_event.set()
+            res.success = True
+            res.message = "checking the placed T"
+            return res
         self.abort_requested = False
         self.start_event.set()
         res.success = True
@@ -501,6 +521,49 @@ class EpisodeManager(Driver):
         self.get_logger().info(f"continuing from seed {seed} ({root / 'meta' / rc.SIDECAR})")
         return seed
 
+    def place_block(self, start_pose, home) -> dict:
+        """Real-robot reset: wait until the operator has put the T on ``start_pose``.
+
+        Every ``~/start`` checks the camera's pose once; the wait ends when it agrees, or with a
+        ``DriverError`` when the operator gives the episode up. The tool stays lifted and parked
+        throughout and nothing moves until the placement is confirmed. Returns the sidecar
+        fields for the reset.
+        """
+        home_sheet = (home[0] - self.sheet_origin[0], home[1] - self.sheet_origin[1])
+        self.start_pose_pub.publish(pose_msg(start_pose))
+        self.confirm_event.clear()
+        self._set_state(STATE_PLACE)
+        self.get_logger().info(
+            f"place the T at x {start_pose[0] * 1000:+.0f} mm, y {start_pose[1] * 1000:+.0f} mm, "
+            f"yaw {math.degrees(start_pose[2]):+.0f} deg (the outline in score_viewer), take "
+            "your hand away, then call ~/start (key s)"
+        )
+        while True:
+            while not self.confirm_event.wait(0.05):
+                if self.stop_requested or self.discard_requested or not rclpy.ok():
+                    raise DriverError("placement given up by the operator")
+            self.confirm_event.clear()
+            placed = self.block_pose
+            check = mc.check_placement(
+                placed, time.monotonic() - self.block_pose_t, start_pose, home_sheet,
+                self.place_tolerance, self.place_tolerance_rad,
+            )
+            if check.ok:
+                moved = self.block_motion(0.5)
+                if moved[0] <= 0.002 and moved[1] <= math.radians(1.0):
+                    break
+                check = mc.Placement(False, note="the T is still moving")
+            self.get_logger().warning(f"{check.note}; fix it and call ~/start again")
+        self.get_logger().info(
+            f"T placed {check.d * 1000:.1f} mm, {math.degrees(check.dyaw):.1f} deg from the "
+            "start pose"
+        )
+        return {
+            "start_pose_measured": [round(float(v), 5) for v in placed],
+            "placement_error_mm": round(check.d * 1000, 2),
+            "placement_error_deg": round(math.degrees(check.dyaw), 2),
+        }
+
     def episode(self, seed: int) -> None:
         self.stop_requested = self.discard_requested = False
         cfg = self.cfg
@@ -513,18 +576,28 @@ class EpisodeManager(Driver):
             f"home {home} (clearance {clearance * 1000:.0f} mm)"
         )
 
-        # Reset: hold the arm, lift, park, teleport the T, lower.
+        # Reset: hold the arm, lift, park, put the T on its start pose (sim: teleport; real: the
+        # operator), lower.
         self._set_state("reset:lift")
         self.set_guard_source("pose")
         self.scripted(True)
         self.lift(True)
         self._set_state("reset:home")
         self.go_to(home)
-        self._set_state("reset:teleport")
-        d, dyaw = self.teleport(start_pose)
-        moved = self.block_motion(0.5)
-        if moved[0] > 0.0005 or moved[1] > math.radians(0.2):
-            raise DriverError(f"T still moving after teleport ({moved[0] * 1000:.2f} mm in 0.5 s)")
+        if self.mode == "real":
+            reset_meta = self.place_block(start_pose, home)
+        else:
+            self._set_state("reset:teleport")
+            d, dyaw = self.teleport(start_pose)
+            moved = self.block_motion(0.5)
+            if moved[0] > 0.0005 or moved[1] > math.radians(0.2):
+                raise DriverError(
+                    f"T still moving after teleport ({moved[0] * 1000:.2f} mm in 0.5 s)"
+                )
+            reset_meta = {
+                "teleport_error_mm": round(d * 1000, 2),
+                "teleport_error_deg": round(math.degrees(dyaw), 2),
+            }
         self._set_state("reset:lower")
         self.lift(False)
         time.sleep(self.lower_settle)
@@ -532,11 +605,7 @@ class EpisodeManager(Driver):
         # Record.
         meta = mc.episode_meta(
             seed, start_pose, home, self.operator, self.mode,
-            {
-                "teleport_error_mm": round(d * 1000, 2),
-                "teleport_error_deg": round(math.degrees(dyaw), 2),
-                "input_device": self.input_device,
-            },
+            {**reset_meta, "input_device": self.input_device},
         )
         self.set_episode_meta(meta)
         self.scripted(False)
