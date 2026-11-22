@@ -281,6 +281,44 @@ class EpisodeStore:
         self.dataset = None
         return line
 
+    def delete_last(self) -> dict:
+        """Remove the most recently saved episode; returns its sidecar line (seed, score).
+
+        LeRobot cannot drop an episode in place, so ``delete_episodes`` writes the kept episodes
+        to ``<root>.tmp`` and the directories are swapped. The dataset as it was before the
+        deletion stays in ``<root>.bak`` (one generation: the next deletion replaces it), which
+        is the way back from a wrong key press.
+        """
+        self.close()
+        root = Path(self.cfg.root)
+        n = self.next_episode_index
+        if n == 0:
+            raise ValueError("no saved episode to delete")
+        lines = read_sidecar(root)
+        if not lines or lines[-1].get("episode_index") != n - 1:
+            raise ValueError(
+                f"the last line of {self.sidecar} is not episode {n - 1}; not deleting"
+            )
+        backup = root.with_name(root.name + ".bak")
+        tmp = root.with_name(root.name + ".tmp")
+        for leftover in (backup, tmp):
+            if leftover.exists():
+                shutil.rmtree(leftover)
+        if n == 1:  # delete_episodes refuses to empty a dataset; the next save creates it anew
+            root.rename(backup)
+            return lines[-1]
+        from lerobot.datasets.dataset_tools import delete_episodes
+        from lerobot.datasets.lerobot_dataset import LeRobotDataset
+
+        source = LeRobotDataset(self.cfg.repo_id, root=root)
+        delete_episodes(source, [n - 1], output_dir=tmp, repo_id=self.cfg.repo_id)
+        with (tmp / "meta" / SIDECAR).open("w") as f:
+            for line in lines[:-1]:
+                f.write(json.dumps(line) + "\n")
+        root.rename(backup)
+        tmp.rename(root)
+        return lines[-1]
+
     def close(self) -> None:
         if self.dataset is not None:
             self.dataset.finalize()

@@ -24,6 +24,9 @@ Services (std_srvs/Trigger)
     ~/stop      end the current episode now, score and save it
     ~/discard   end the current episode now and drop it
     ~/abort     finish or drop the current episode, then stop the run (tool stays lifted)
+    ~/redo      between episodes only: delete the most recently saved episode from the dataset
+                and record its seed again (the dataset before the deletion stays in
+                ``<root>.bak``)
 Outputs
     ~/state     std_msgs/String   idle | reset:<step> | record:<n> | end:<step> | fault:<why>
     /pusht/start_pose   geometry_msgs/Pose (latched)   real: where the operator puts the T
@@ -124,7 +127,7 @@ class Driver(Node):
         self.score_client = self.create_client(Trigger, "/pusht_scorer/score")
         self.recorder_clients = {
             cmd: self.create_client(Trigger, f"/episode_recorder/{cmd}")
-            for cmd in ("start", "stop", "save", "discard")
+            for cmd in ("start", "stop", "save", "discard", "delete_last")
         }
         self.guard_params = AsyncParameterClient(self, "planar_guard")
         self._deadman_before: bool | None = None
@@ -390,6 +393,7 @@ class EpisodeManager(Driver):
         self.stop_requested = False
         self.discard_requested = False
         self.abort_requested = False
+        self.redo_requested = False
         self.place_tolerance: float = p["place_tolerance"]
         self.place_tolerance_rad = math.radians(p["place_tolerance_deg"])
         self.confirm_event = threading.Event()
@@ -399,6 +403,7 @@ class EpisodeManager(Driver):
         self.create_service(Trigger, "~/stop", self._on_stop)
         self.create_service(Trigger, "~/discard", self._on_discard)
         self.create_service(Trigger, "~/abort", self._on_abort)
+        self.create_service(Trigger, "~/redo", self._on_redo)
         self.create_timer(1.0, lambda: self.state_pub.publish(String(data=self.state)))
         self._set_state("idle")
         seeds_from = f"from {self.seed}" if self.seed >= 0 else "continuing from the sidecar"
@@ -473,6 +478,18 @@ class EpisodeManager(Driver):
         res.message = "abort requested"
         return res
 
+    def _on_redo(self, _req, res: Trigger.Response) -> Trigger.Response:
+        if not (self.state == "idle" or self.state.startswith("fault")):
+            res.success = False
+            res.message = f"busy ({self.state}); redo works between episodes only"
+            return res
+        self.abort_requested = False
+        self.redo_requested = True
+        self.start_event.set()
+        res.success = True
+        res.message = "deleting the last saved episode, then recording its seed again"
+        return res
+
     # ------------------------------------------------------------------ the loop
 
     def run(self) -> None:
@@ -484,7 +501,11 @@ class EpisodeManager(Driver):
             if self.abort_requested or not rclpy.ok():
                 continue
             try:
-                if self.seed < 0:
+                if self.redo_requested:
+                    self.redo_requested = False
+                    self.seed = self.delete_last_episode()
+                    done = max(0, done - 1)
+                elif self.seed < 0:
                     self.seed = self.resume_seed()
                 self.episode(self.seed)
                 self.scripted(False)
@@ -520,6 +541,22 @@ class EpisodeManager(Driver):
         seed = mc.next_seed(rc.read_sidecar(root))
         self.get_logger().info(f"continuing from seed {seed} ({root / 'meta' / rc.SIDECAR})")
         return seed
+
+    def delete_last_episode(self) -> int:
+        """Have the recorder delete the last saved episode; returns the seed to record again."""
+        self._set_state("redo:delete")
+        line = json.loads(self.recorder("delete_last"))
+        seed = line.get("seed")
+        if seed is None:  # old or foreign metadata: carry on from what the sidecar still holds
+            self.get_logger().warning(
+                f"deleted episode {line.get('episode_index')} had no seed in the sidecar"
+            )
+            return self.resume_seed()
+        self.get_logger().info(
+            f"deleted episode {line.get('episode_index')} (seed {seed}, coverage "
+            f"{line.get('final_coverage')}); recording seed {seed} again"
+        )
+        return int(seed)
 
     def place_block(self, start_pose, home) -> dict:
         """Real-robot reset: wait until the operator has put the T on ``start_pose``.

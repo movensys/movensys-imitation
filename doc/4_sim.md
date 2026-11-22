@@ -370,6 +370,12 @@ sessions then append without repeating start poses. Pass `seed_start:=<n>` to st
 A fault in any step (timeout, refused service, teleport not reached) ends the run safely:
 recorder discard, guard to `pose`, lift up, state `fault:<why>`; `~/start` runs the next seed.
 
+A saved episode that should not stay (a bad push, a bumped T) is redone with `~/redo` (key `r`,
+then `y`), between episodes only: the recorder's `~/delete_last` removes the most recently saved
+episode and its sidecar line, and the manager records the same seed again, which takes the freed
+episode index. The dataset as it was before the deletion stays in `<root>.bak` (one generation;
+the next redo replaces it).
+
 ### Running
 
 ```bash
@@ -377,7 +383,7 @@ source env.bash
 colcon build --symlink-install --base-paths movensys_imitation_ros --packages-select movensys_imitation_ros
 source env.bash
 ros2 launch movensys_imitation_ros collect.launch.py mode:=sim operator:=name n_episodes:=10   # seed_start:=<n> to override
-python -m movensys_imitation_ros.collect_keys      # s start, x stop+save, d discard, a abort, q
+python -m movensys_imitation_ros.collect_keys      # s start, x stop+save, d discard, r redo last, a abort, q
 ros2 topic echo /episode_manager/state             # idle | reset:* | record:<n> | end:* | fault:*
 ```
 

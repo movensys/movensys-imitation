@@ -181,3 +181,44 @@ def test_store_clears_an_empty_root_and_refuses_a_foreign_one(tmp_path: Path):
     with pytest.raises(FileExistsError, match="without meta/info.json"):
         rc.EpisodeStore(cfg2).open_dataset()
     assert (foreign / "notes.txt").exists()
+
+
+@pytest.mark.lerobot
+def test_store_deletes_the_last_episode(tmp_path: Path):
+    pytest.importorskip("lerobot")
+    from lerobot.datasets.lerobot_dataset import LeRobotDataset
+
+    cfg = rc.RecorderConfig(repo_id="test/pusht", root=tmp_path / "ds", image_size=64)
+    store = rc.EpisodeStore(cfg)
+    with pytest.raises(ValueError, match="no saved episode"):
+        store.delete_last()
+
+    def record(seed: int, n: int) -> None:
+        buf = rc.EpisodeBuffer(calibration(), cfg)
+        for i in range(n):
+            buf.add(sample(i * 0.1))
+        store.save(buf, {"seed": seed})
+
+    record(1000, 4)
+    record(1001, 3)
+    gone = store.delete_last()
+    assert gone["seed"] == 1001 and gone["episode_index"] == 1
+    assert [m["seed"] for m in rc.read_sidecar(cfg.root)] == [1000]
+    ds = LeRobotDataset(cfg.repo_id, root=cfg.root)
+    assert ds.meta.total_episodes == 1 and ds.meta.total_frames == 4
+    backup = tmp_path / "ds.bak"  # the dataset as it was, with both episodes
+    assert len(rc.read_sidecar(backup)) == 2 and not (tmp_path / "ds.tmp").exists()
+
+    # The same seed again takes the freed index.
+    record(1001, 5)
+    assert [m["episode_index"] for m in rc.read_sidecar(cfg.root)] == [0, 1]
+    ds = LeRobotDataset(cfg.repo_id, root=cfg.root)
+    assert ds.meta.total_episodes == 2 and ds.meta.total_frames == 9
+
+    # Down to nothing: the root goes to the backup and the next save starts a new dataset.
+    store.delete_last()
+    assert store.delete_last()["seed"] == 1000
+    assert not Path(cfg.root).exists() and store.next_episode_index == 0
+    record(1000, 2)
+    assert LeRobotDataset(cfg.repo_id, root=cfg.root).meta.total_episodes == 1
+    store.close()

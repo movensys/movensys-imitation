@@ -3,7 +3,8 @@ collect_keys: keyboard front end for the episode manager (P2.4).
 
 The manager runs under ``ros2 launch`` without a terminal, so keys live in this small client:
 ``s`` start the next episode, ``x`` stop and save the current one, ``d`` stop and discard,
-``a`` abort the run, ``q`` quit. On the real robot the manager waits in ``reset:place`` for the
+``a`` abort the run, ``r`` then ``y`` delete the last saved episode and record its seed again
+(between episodes only), ``q`` quit. On the real robot the manager waits in ``reset:place`` for the
 T to be put on its start pose (``score_viewer`` shows it); ``s`` there means "placed, check it"
 and ``d`` gives the episode up. Run from any sourced shell::
 
@@ -23,13 +24,14 @@ from std_msgs.msg import String
 from std_srvs.srv import Trigger
 
 KEYS = {"s": "start", "x": "stop", "d": "discard", "a": "abort"}
+REDO = "redo"  # key r, confirmed with y: it deletes a saved episode
 
 
 class Keys(Node):
     def __init__(self) -> None:
         super().__init__("collect_keys")
         self.clients_ = {cmd: self.create_client(Trigger, f"/episode_manager/{cmd}")
-                         for cmd in KEYS.values()}
+                         for cmd in (*KEYS.values(), REDO)}
         self.state = ""
         self.create_subscription(String, "/episode_manager/state", self._on_state, 10)
 
@@ -58,16 +60,29 @@ def main(args=None) -> None:
     node = Keys()
     fd = sys.stdin.fileno()
     old = termios.tcgetattr(fd)
-    print("s start | x stop+save | d discard | a abort | q quit", end="\r\n", flush=True)
+    print("s start | x stop+save | d discard | r redo last | a abort | q quit", end="\r\n",
+          flush=True)
+    confirm_redo = False
     try:
         tty.setcbreak(fd)
         while rclpy.ok():
             rclpy.spin_once(node, timeout_sec=0.05)
             if select.select([sys.stdin], [], [], 0)[0]:
                 key = sys.stdin.read(1)
+                if confirm_redo:
+                    confirm_redo = False
+                    if key == "y":
+                        node.send(REDO)
+                    else:
+                        print("\rredo cancelled", end="\r\n", flush=True)
+                    continue
                 if key == "q":
                     break
-                if key in KEYS:
+                if key == "r":
+                    confirm_redo = True
+                    print("\rdelete the last saved episode and record its seed again? y to "
+                          "confirm, any other key cancels", end="\r\n", flush=True)
+                elif key in KEYS:
                     node.send(KEYS[key])
     except KeyboardInterrupt:
         pass

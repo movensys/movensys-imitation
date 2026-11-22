@@ -18,6 +18,9 @@ Services (std_srvs/Trigger)
     ~/stop      stop buffering, keep the frames
     ~/save      stop and write the episode; the response message is JSON (episode_index, timing)
     ~/discard   stop and drop the frames
+    ~/delete_last   remove the most recently saved episode from the dataset (refused while
+                recording); the response message is its sidecar line as JSON. The dataset as
+                it was before stays in ``<root>.bak``
 Parameter ``episode_meta`` (JSON string) is merged into the sidecar line at save time; the
 manager sets it before ``~/start`` (seed, operator) and again before ``~/save`` (end score).
 Outputs
@@ -109,6 +112,7 @@ class EpisodeRecorder(Node):
         self.create_service(Trigger, "~/stop", self._on_stop)
         self.create_service(Trigger, "~/save", self._on_save)
         self.create_service(Trigger, "~/discard", self._on_discard)
+        self.create_service(Trigger, "~/delete_last", self._on_delete_last)
         self.create_timer(1.0 / self.cfg.fps, self._tick)
         self.create_timer(1.0, self._heartbeat)
         self._set_state("idle")
@@ -293,6 +297,26 @@ class EpisodeRecorder(Node):
         res.success = True
         res.message = f"discarded {n} frames"
         self.get_logger().info(res.message)
+        return res
+
+    def _on_delete_last(self, _req, res: Trigger.Response) -> Trigger.Response:
+        if self.recording:
+            res.success = False
+            res.message = "recording; stop or discard the current episode first"
+            return res
+        try:
+            line = self.store.delete_last()
+        except Exception as e:  # noqa: B902  report the failure to the caller, keep the node up
+            res.success = False
+            res.message = f"delete failed: {e}"
+            self.get_logger().error(res.message)
+            return res
+        res.success = True
+        res.message = json.dumps(line)
+        self.get_logger().info(
+            f"deleted episode {line['episode_index']} (seed {line.get('seed')}); the dataset "
+            f"before the deletion is in {self.cfg.root}.bak"
+        )
         return res
 
     # ------------------------------------------------------------------ sampling
