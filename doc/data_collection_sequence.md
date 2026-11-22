@@ -99,7 +99,7 @@ joints, T pose and coverage. The top camera moved to an oblique view on 2026-11-
 of each push). The straight-down episodes (`pusht_cr3a_sim_v1`) were deleted on 2026-11-05;
 the first oblique-camera episodes went to `pusht_cr3a_sim_v2` at a 0.80 success threshold. Since
 2026-11-05 the threshold is 0.85 and the recorder default is `pusht_cr3a_sim_v3`; `v2` is kept
-as is and not extended.
+as is and not extended. Since 2026-11-22 the threshold is 0.90.
 
 ### A. Offline viewer: what was recorded
 

@@ -10,7 +10,7 @@ Compare ACT, Diffusion Policy and Flow Matching on PushT with the Dobot CR3A. De
 
 **Changes in v2.7 (2026-11-22):** progress update; the tracker and the status cells below now reflect the work up to this date. What changed in the design since v2.6, all already in the code:
 
-- **Success threshold 0.85** (2026-11-05, `scoring.SUCCESS_THRESHOLD`, `recorder.yaml`), not 0.95 (changed in PR #12 together with the move to the oblique camera; the reason is not written down, add it at the next review). Table R1 (gym) stays at 0.95 / 0.90; R2 and R4 will report 0.85 as primary and say so.
+- **Success threshold 0.90** (2026-11-22, `scoring.SUCCESS_THRESHOLD`, `recorder.yaml`; 0.85 from 2026-11-05 to 2026-11-22), not 0.95 (lowered to 0.85 in PR #12 together with the move to the oblique camera; the reason is not written down, add it at the next review). Table R1 (gym) stays at 0.95 / 0.90; R2 and R4 will report 0.90 as primary and say so.
 - **Oblique top camera, one camera only** (2026-11-05, sim and real): the straight-down view lost the T behind the forearm. Sim datasets restarted at `pusht_cr3a_sim_v3`.
 - **Real robot runs on a Jetson Thor** (2026-11-17, PR #14). This reverses "Jetson deployment" in the out-of-scope list for the robot-side nodes; training stays on the 5090.
 - **Real scoring is by pose estimation, not by pixel masks** (2026-11-19). This supersedes the v2.1 "no camera calibration" design for the real robot: `setup_camera_pose` gets the camera pose from the eight corners of the printed goal T (`solvePnP`, RealSense factory intrinsics) into `calibration/real/camera.yaml`; `t_pose_estimator` fits the block pose in every frame and publishes it on `/pusht/t_block/pose`, so the scorer's geometric backend, the recorder's `block_pose` and the manager work on the real robot exactly as in sim. Reason: with the oblique view the pixel backend overstates coverage (scale changes across the sheet, block sides counted as T). `block_pose` is therefore available in real datasets, not NaN.
@@ -210,7 +210,7 @@ Not planned: the Isaac Sim Synthetic Data Recorder (perception datasets, not epi
 
 ## 4. Results tracker
 
-Fill from the CSVs in `results/<stage>/`. Mean and standard deviation over training seeds; real trials reported separately from seed variance. Success = coverage >= 0.95 at any step within 300 steps (10 Hz); 0.90 is the secondary threshold. This holds for R1 (gym). On the CR3A, sim and real, the threshold is **0.85** since 2026-11-05, held for 5 consecutive 10 Hz samples and confirmed by the end-of-episode score with the tool lifted; R2 and R4 report 0.85 as primary.
+Fill from the CSVs in `results/<stage>/`. Mean and standard deviation over training seeds; real trials reported separately from seed variance. Success = coverage >= 0.95 at any step within 300 steps (10 Hz); 0.90 is the secondary threshold. This holds for R1 (gym). On the CR3A, sim and real, the threshold is **0.90** since 2026-11-22 (0.85 from 2026-11-05), held for 5 consecutive 10 Hz samples and confirmed by the end-of-episode score with the tool lifted; R2 and R4 report 0.90 as primary.
 
 | Metric | Definition |
 |---|---|
