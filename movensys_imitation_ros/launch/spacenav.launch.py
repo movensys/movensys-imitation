@@ -7,7 +7,8 @@ and a ``topic_tools`` throttle republishes it as ``/spacenav/joy`` at ``joy_hz``
 Quest controller's rate; the consumers tick at 50 Hz with ``joy_stale`` 0.2 s). Measured
 steady-state guard CPU on the lab box: 9 % idle, 17 % at 60 Hz, 25 % at 100 Hz, 50 % on
 the raw stream. Axes are x, y, z,
-roll, pitch, yaw in about -1..1 (raw counts over ``full_scale`` 512), zero at rest
+roll, pitch, yaw in about -1..1 (raw counts over ``full_scale`` 350: a straight
+push of the puck tops out near 330 counts, not the driver default 512), zero at rest
 (``zero_when_static``); buttons as numbered by spacenavd, the array growing to the highest
 key pressed so far. ``/spacenav/twist`` and the two offsets stay unthrottled (about 32 Hz at
 rest, event-driven in motion). Included by guard.launch.py, collect.launch.py and
@@ -34,7 +35,7 @@ def generate_launch_description():
                 executable="spacenav_node",
                 name="spacenav",
                 output="screen",
-                parameters=[{"zero_when_static": True}],
+                parameters=[{"zero_when_static": True, "full_scale": 350.0}],
                 remappings=[("spacenav/joy", "spacenav/joy_raw")],
             ),
             Node(
