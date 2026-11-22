@@ -390,7 +390,15 @@ class PlanarGuard(Node):
             self.get_logger().warning(msg + " -- outside +-5 mm of nominal; check the height")
         else:
             self.get_logger().info(msg)
-        if abs(self.lift_offset) > 0.001:
+        if how == "setpoint" and self.lift_offset > 0.001:
+            # Real robot: do not descend at start-up, the T may be under the tool. Stay lifted
+            # ("up") until ~/lift false; the episode manager lowers at its parking point.
+            self.lift_goal = self.lift_offset
+            self.get_logger().warning(
+                f"tool is {self.lift_offset * 1000:+.1f} mm above the plane; holding it there "
+                "until ~/lift false"
+            )
+        elif abs(self.lift_offset) > 0.001:
             self.get_logger().warning(
                 f"tool is {self.lift_offset * 1000:+.1f} mm off the plane; ramping it there"
             )

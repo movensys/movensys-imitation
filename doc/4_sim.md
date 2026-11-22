@@ -384,7 +384,9 @@ ros2 topic echo /episode_manager/state             # idle | reset:* | record:<n>
 Preconditions as for the guard, except the push height: in sim the launch sets the guard's
 `latch_mode` to `nominal`, so the plane is table + nominal clearance and the tool ramps there
 wherever it was parked (a restart after a fault starts with the tool lifted). On the real robot
-`latch_mode` stays `measured`: park the rod at push height first. `quest_servo_teleop` must not
+the launch
+sets the guard's `z_setpoint` to `push_z` (default `launch_support.REAL_PUSH_Z`): a tool found
+above that plane stays where it is until the manager lowers it at the parking point. `quest_servo_teleop` must not
 be running. The grip is needed only while recording: the manager drops `require_deadman` for
 its own lift, home and lower moves and restores it before switching to the stick
 (`scripted_deadman: true` keeps it throughout). Isaac runs at about 0.55 real time on the lab

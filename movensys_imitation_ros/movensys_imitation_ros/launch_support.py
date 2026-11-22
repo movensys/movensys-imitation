@@ -21,6 +21,14 @@ from launch.utilities import perform_substitutions
 import yaml
 
 
+REAL_PUSH_Z = "0.2703"
+"""Link6 z [m, planning frame] of the push plane on the real CR3A: the guard's ``z_setpoint`` in
+``mode:=real`` (launch argument ``push_z``). Measured 2026-11-22 with the rod parked at push
+height (the first real episode ran at it). A guard that latched the measured height instead
+took the lifted height left by the previous session's safe stop as the plane, and two episodes
+were recorded 80 mm above the T (2026-11-22). Measure again if the table or the rod changes."""
+
+
 def perform(context: LaunchContext, value):
     """Resolve a substitution (or list of them) to a string; plain values pass through."""
     if isinstance(value, (str, bool, int, float)):

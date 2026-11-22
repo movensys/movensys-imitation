@@ -28,6 +28,7 @@ from launch_ros.actions import Node
 from movensys_imitation_ros.launch_support import (
     perform,
     pose_estimator_processes,
+    REAL_PUSH_Z,
     sim_time_and_mode,
     venv_process,
 )
@@ -113,6 +114,10 @@ def generate_launch_description():
                 "seed_start", default_value="2000", description="first start-pose seed"
             ),
             DeclareLaunchArgument("n_episodes", default_value="10"),
+            DeclareLaunchArgument(
+                "push_z", default_value=REAL_PUSH_Z,
+                description="mode:=real: Link6 z of the push plane (guard z_setpoint) [m]",
+            ),
             DeclareLaunchArgument("auto_start", default_value="true"),
             Node(
                 package="movensys_imitation_ros",
@@ -128,6 +133,9 @@ def generate_launch_description():
                         "source": "pose",
                         "latch_mode": PythonExpression(
                             ["'nominal' if '", mode, "' == 'sim' else 'measured'"]
+                        ),
+                        "z_setpoint": PythonExpression(
+                            [LaunchConfiguration("push_z"), " if '", mode, "' == 'real' else -1.0"]
                         ),
                     },
                 ],
