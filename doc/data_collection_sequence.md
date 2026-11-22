@@ -25,7 +25,7 @@ is invalid"):
 mros
 ros2 service call /wmx/moveit2/absolute_base_eef_joint_movement \
   movensys_manipulator_moveit_config/srv/MovePose \
-  "{pos: [-0.107, -0.071, 0.284], ori: [3.137, -0.003, -3.141]}"
+  "{pos: [0.153, -0.027, 0.270], ori: [3.130, -0.008, -3.083]}"
 ```
 
 
