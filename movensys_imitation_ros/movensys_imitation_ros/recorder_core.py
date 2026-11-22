@@ -85,7 +85,7 @@ def resize_crop(crop_rgb: np.ndarray, size: int) -> np.ndarray:
     return np.ascontiguousarray(cv2.resize(crop_rgb, (size, size), interpolation=cv2.INTER_AREA))
 
 
-def build_frame(s: Sample, cal: sc.Calibration, cfg: RecorderConfig) -> dict:
+def build_frame(s: Sample, cal: sc.ImageCrop, cfg: RecorderConfig) -> dict:
     """One LeRobot frame of the recorder schema from a complete sample."""
     cal.check_frame(s.image)
     image = resize_crop(cal.apply_crop(s.image), cfg.image_size)
@@ -141,7 +141,7 @@ class Timing:
 class EpisodeBuffer:
     """Frames of the episode being recorded plus their timing statistics."""
 
-    def __init__(self, cal: sc.Calibration, cfg: RecorderConfig) -> None:
+    def __init__(self, cal: sc.ImageCrop, cfg: RecorderConfig) -> None:
         self.cal = cal
         self.cfg = cfg
         self.frames: list[dict] = []

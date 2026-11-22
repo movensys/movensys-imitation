@@ -71,7 +71,7 @@ class PolicyRunnerNode(Node):
 
         cal_dir = Path(p["calibration_dir"]) if p["calibration_dir"] else None
         cal_dir = cal_dir or default_calibration_dir(p["mode"])
-        self.cal = sc.Calibration.load(cal_dir)
+        self.cal = sc.load_image_crop(cal_dir)
 
         pretrained = resolve_path(p["pretrained"])
         if not pretrained.exists():
@@ -107,7 +107,8 @@ class PolicyRunnerNode(Node):
             f"policy_runner: {self.runner.cfg.type} from {pretrained} "
             f"({', '.join(overrides) or 'no overrides'}), mode {self.run_mode}, "
             f"trigger {self.gate.trigger}, device {self.runner.cfg.device}, "
-            f"{self.image_size} px crop from {cal_dir}, eef via {self.eef_source}, "
+            f"{self.image_size} px image from crop {self.cal.crop} "
+            f"({cal_dir / self.cal.source}), eef via {self.eef_source}, "
             f"sheet origin {self.origin}"
         )
 

@@ -78,3 +78,18 @@ def sim_time_and_mode(context: LaunchContext) -> dict:
     """``use_sim_time`` and the node ``mode`` from the launch argument ``mode`` (sim|hil|real)."""
     mode = perform(context, LaunchConfiguration("mode"))
     return {"use_sim_time": mode != "real", "mode": "sim" if mode != "real" else "real"}
+
+
+def pose_estimator_processes(context: LaunchContext, config_dir: str, common: dict) -> list:
+    """
+    Start ``t_pose_estimator`` on the real robot; it feeds ``/pusht/t_block/pose``.
+
+    None in sim, where Isaac publishes the ground-truth pose.
+    """
+    if common.get("mode") != "real":
+        return []
+    files = [
+        os.path.join(config_dir, "task.yaml"),
+        os.path.join(config_dir, "pose_estimator.yaml"),
+    ]
+    return [venv_process(context, "t_pose_estimator", files, common)]

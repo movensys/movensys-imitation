@@ -86,6 +86,44 @@ def choose_home(
     return best, clearance
 
 
+@dataclass
+class Placement:
+    """Verdict on a hand-placed T (real-robot reset); ``note`` says what to fix when not ok."""
+
+    ok: bool
+    d: float = math.nan  # m from the requested start pose
+    dyaw: float = math.nan  # rad
+    note: str = ""
+
+
+def check_placement(
+    measured, age: float, target, home_sheet_xy, tol_m: float, tol_rad: float,
+    max_age: float = 1.0, min_clearance: float = 0.02,
+) -> Placement:
+    """Judge the T the operator placed against the requested start pose (all in the sheet frame).
+
+    ``measured`` is the latest pose from ``t_pose_estimator`` and ``age`` its age in seconds: the
+    estimator publishes good fits only, so a hand over the T or a T outside the push area shows
+    up as a stale pose. ``home_sheet_xy`` is the parked tip, which lowers next and must not land
+    on the T.
+    """
+    if measured is None or age > max_age:
+        return Placement(False, note="no block pose from the camera (T hidden or out of view)")
+    d, dyaw = pose_difference(measured, target)
+    if d > tol_m or dyaw > tol_rad:
+        return Placement(
+            False, d, dyaw,
+            f"T is {d * 1000:.0f} mm and {math.degrees(dyaw):.0f} deg from the start pose "
+            f"(allowed {tol_m * 1000:.0f} mm, {math.degrees(tol_rad):.0f} deg)",
+        )
+    clearance = home_clearance(home_sheet_xy, measured)
+    if clearance < min_clearance:
+        return Placement(
+            False, d, dyaw, f"T is {clearance * 1000:.0f} mm from the parked tip; move it away"
+        )
+    return Placement(True, d, dyaw)
+
+
 def success_run(run: int, coverage: float, threshold: float) -> int:
     """Consecutive samples at or above ``threshold`` after this one (NaN or below resets to 0)."""
     if math.isnan(coverage) or coverage < threshold:

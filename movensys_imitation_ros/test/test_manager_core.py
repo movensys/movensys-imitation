@@ -143,3 +143,36 @@ def test_pose_difference_wraps_yaw():
 def test_episode_meta_fields():
     m = mc.episode_meta(1000, (0.1, 0.2, 0.3), (-0.03, 0.08), "me", "sim", {"x": 1})
     assert m["seed"] == 1000 and m["home_xy"] == [-0.03, 0.08] and m["x"] == 1
+
+
+# Real-robot reset: the operator places the T, the camera's pose is checked against the start.
+START = (0.05, 0.02, 0.5)
+HOME_SHEET = (-0.22, 0.13)
+TOL = (0.015, math.radians(10))
+
+
+def test_check_placement_accepts_a_t_within_tolerance():
+    p = mc.check_placement((0.058, 0.026, 0.6), 0.1, START, HOME_SHEET, *TOL)
+    assert p.ok and p.note == ""
+    assert p.d == pytest.approx(0.010) and p.dyaw == pytest.approx(0.1)
+
+
+@pytest.mark.parametrize(
+    ("measured", "age", "word"),
+    [
+        (None, 0.0, "no block pose"),                # never seen
+        ((0.05, 0.02, 0.5), 2.0, "no block pose"),   # stale: a hand over the T
+        ((0.08, 0.02, 0.5), 0.1, "30 mm"),           # too far
+        ((0.05, 0.02, 0.5 + math.radians(20)), 0.1, "20 deg"),
+        ((0.05, 0.02, 0.5 - 2 * math.pi + math.radians(170)), 0.1, "170 deg"),  # yaw wraps
+    ],
+)
+def test_check_placement_says_what_is_wrong(measured, age, word):
+    p = mc.check_placement(measured, age, START, HOME_SHEET, *TOL)
+    assert not p.ok and word in p.note
+
+
+def test_check_placement_refuses_a_t_under_the_parked_tip():
+    pose = (HOME_SHEET[0], HOME_SHEET[1] + 0.01, 0.0)  # in tolerance of itself, under the tip
+    p = mc.check_placement(pose, 0.1, pose, HOME_SHEET, *TOL)
+    assert not p.ok and "parked tip" in p.note

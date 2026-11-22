@@ -15,5 +15,9 @@ source /opt/ros/jazzy/setup.bash
 [ -f "$_HERE/install/setup.bash" ] && source "$_HERE/install/setup.bash"
 # shellcheck disable=SC1091
 [ -f "$_HERE/.venv/bin/activate" ] && source "$_HERE/.venv/bin/activate"
+# Cyclone DDS on loopback only (2026-11-20): left to pick an interface it chose the EtherCAT port
+# and the image traffic there dropped the servos. Same setting as the containers' cyclonedds.xml.
+# Set CYCLONEDDS_URI before sourcing this to talk to another machine instead.
+export CYCLONEDDS_URI="${CYCLONEDDS_URI:-file://$_HERE/cyclonedds.xml}"
 export MOVENSYS_IMITATION_ROOT="$_HERE"
 unset _HERE

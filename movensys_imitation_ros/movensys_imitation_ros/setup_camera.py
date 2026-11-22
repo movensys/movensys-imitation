@@ -40,9 +40,10 @@ def load_scorer_yaml(path: Path) -> dict:
     return doc["pusht_scorer"]["ros__parameters"]
 
 
-def mask_config_from_yaml(params: dict) -> tuple[sc.MaskConfig, int, int]:
+def mask_config_from_yaml(params: dict, mode: str = "sim") -> tuple[sc.MaskConfig, int, int]:
+    """Segmentation settings; ``initial_threshold_<mode>`` overrides ``initial_threshold``."""
     seg = params.get("segmentation", {})
-    init = params.get("initial_threshold", {})
+    init = params.get(f"initial_threshold_{mode}", params.get("initial_threshold", {}))
     ref = params.get("refine", {})
     cfg = sc.MaskConfig(
         sc.HsvRange.from_dict(init) if init else sc.HsvRange(),
@@ -145,7 +146,9 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
 
     out = args.out or PKG_DIR / "config" / "dobot_cr3a" / "calibration" / args.mode
-    cfg, hue_margin, sv_margin = mask_config_from_yaml(load_scorer_yaml(args.scorer_yaml))
+    cfg, hue_margin, sv_margin = mask_config_from_yaml(
+        load_scorer_yaml(args.scorer_yaml), args.mode
+    )
     goal = g.goal_pose()
     warnings: list[str] = []
 

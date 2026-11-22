@@ -74,7 +74,7 @@ class EpisodeRecorder(Node):
         self.eef_source: str = p["eef_source"]
         cal_dir = Path(p["calibration_dir"]) if p["calibration_dir"] else None
         cal_dir = cal_dir or default_calibration_dir(p["mode"])
-        self.cal = sc.Calibration.load(cal_dir)
+        self.cal = sc.load_image_crop(cal_dir)
         self.store = rc.EpisodeStore(self.cfg)
 
         self.image: Image | None = None
@@ -114,7 +114,8 @@ class EpisodeRecorder(Node):
         self._set_state("idle")
         self.get_logger().info(
             f"episode_recorder: {self.cfg.repo_id} at {self.cfg.root}, {self.cfg.fps} Hz, "
-            f"{self.cfg.image_size} px crop from {cal_dir}, eef via {self.eef_source}"
+            f"{self.cfg.image_size} px image from crop {self.cal.crop} "
+            f"({cal_dir / self.cal.source}), eef via {self.eef_source}"
         )
 
     def _declare_parameters(self) -> dict:
@@ -265,6 +266,7 @@ class EpisodeRecorder(Node):
         except json.JSONDecodeError as e:
             meta = {"meta_error": str(e)}
         meta.setdefault("mode", self.get_parameter("mode").value)
+        meta.setdefault("image_crop", list(self.cal.crop))
         try:
             line = self.store.save(self.buffer, meta)
         except Exception as e:  # noqa: B902  report the failure to the caller, keep the node up
