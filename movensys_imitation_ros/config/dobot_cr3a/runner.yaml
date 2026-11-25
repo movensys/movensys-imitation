@@ -7,6 +7,8 @@ policy_runner:
     pretrained: ""              # checkpoint directory (.../checkpoints/last/pretrained_model), relative to the repo
     policy_overrides: ""        # space-separated, e.g. "--policy.noise_scheduler_type=DDIM --policy.num_inference_steps=10"
     device: ""                  # empty: the checkpoint's device (cuda)
+    cudnn: false                # false: cuDNN off. On the Jetson Thor a DDIM 10 call takes 118 ms
+                                # without it and 327 ms with it (2026-11-25); launch arg cudnn:=true
     run_mode: slow              # shadow | slow | normal
     slow_step: 0.010            # m per tick the target may lead the tip in slow mode (0.1 m/s)
     trigger: recorder           # recorder: act while /episode_recorder/state is recording:<n>; always

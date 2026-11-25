@@ -75,6 +75,7 @@ def launch_setup(context):
                 "policy_overrides": LaunchConfiguration("overrides"),
                 "run_mode": LaunchConfiguration("run_mode"),
                 "trigger": LaunchConfiguration("trigger"),
+                "cudnn": LaunchConfiguration("cudnn"),
             },
         ),
     ]
@@ -100,6 +101,11 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "trigger", default_value="recorder", description="recorder | always"
+            ),
+            DeclareLaunchArgument(
+                "cudnn", default_value="false",
+                description="false: cuDNN off for inference (3x faster diffusion UNet on the "
+                "Jetson Thor) | true",
             ),
             DeclareLaunchArgument(
                 "source", default_value="pose",

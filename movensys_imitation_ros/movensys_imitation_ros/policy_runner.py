@@ -79,7 +79,10 @@ class PolicyRunnerNode(Node):
         overrides = tuple(p["policy_overrides"].split())  # space-separated string
         from movensys_imitation.inference import PolicyRunner  # torch import after rclpy init
 
-        self.runner = PolicyRunner(pretrained, overrides, device=p["device"] or None)
+        self.cudnn: bool = bool(p["cudnn"])
+        self.runner = PolicyRunner(
+            pretrained, overrides, device=p["device"] or None, cudnn=self.cudnn
+        )
 
         self.image: Image | None = None
         self.image_rx = -1.0
@@ -107,6 +110,7 @@ class PolicyRunnerNode(Node):
             f"policy_runner: {self.runner.cfg.type} from {pretrained} "
             f"({', '.join(overrides) or 'no overrides'}), mode {self.run_mode}, "
             f"trigger {self.gate.trigger}, device {self.runner.cfg.device}, "
+            f"cudnn {'on' if self.cudnn else 'off'}, "
             f"{self.image_size} px image from crop {self.cal.crop} "
             f"({cal_dir / self.cal.source}), eef via {self.eef_source}, "
             f"sheet origin {self.origin}"
@@ -118,6 +122,7 @@ class PolicyRunnerNode(Node):
             "pretrained": "",
             "policy_overrides": "",      # space-separated, e.g. "--policy.fm_num_steps=4"
             "device": "",
+            "cudnn": False,              # False: cuDNN off (3x faster diffusion UNet on the Thor)
             "run_mode": "slow",
             "slow_step": 0.010,          # m per tick in slow mode (0.1 m/s at 10 Hz)
             "trigger": "recorder",       # recorder: while the recorder records; always

@@ -51,10 +51,22 @@ class PolicyRunner:
     """One checkpoint, one episode at a time."""
 
     def __init__(
-        self, pretrained: str | Path, overrides: tuple[str, ...] = (), device: str | None = None
+        self,
+        pretrained: str | Path,
+        overrides: tuple[str, ...] = (),
+        device: str | None = None,
+        cudnn: bool = True,
     ):
+        """``cudnn=False`` turns cuDNN off for the whole process (``torch.backends.cudnn``).
+
+        On the Jetson Thor cuDNN 9.19 is slow on the diffusion UNet's 1-D convolutions: 32 ms
+        per denoising step against 11 ms without, 327 ms against 118 ms for a DDIM 10 call,
+        actions equal to 0.03 mm (measured 2026-11-25, diffusion_v1_s1).
+        """
         from lerobot.policies.factory import get_policy_class, make_pre_post_processors
 
+        if not cudnn:
+            torch.backends.cudnn.enabled = False
         pretrained = Path(pretrained)
         self.cfg = load_config(pretrained, overrides)
         if device:
