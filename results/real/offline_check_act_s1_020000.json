@@ -1,0 +1,24 @@
+{
+  "pretrained": "outputs/real/act_v1_s1/checkpoints/020000/pretrained_model",
+  "overrides": [],
+  "episodes": [
+    61,
+    62,
+    63,
+    64,
+    65
+  ],
+  "frames": 1195,
+  "mean_err_mm": 52.4866828918457,
+  "p95_err_mm": 113.86939239501953,
+  "bias_mm": [
+    6.378344535827637,
+    14.515663146972656
+  ],
+  "direction_agreement": 0.19568151147098514,
+  "baseline_hold_mm": 13.310489654541016,
+  "baseline_repeat_mm": 5.321731090545654,
+  "baseline_repeat_direction_agreement": 0.9919028340080972,
+  "latency_ms_median": 8.627829000033671,
+  "latency_ms_p95": 9.85590849950313
+}

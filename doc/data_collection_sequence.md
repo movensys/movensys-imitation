@@ -62,6 +62,32 @@ ros2 param set /planar_guard require_deadman false
 ```
 
 
+## Start the camera (real robot only)
+
+In sim the Isaac scene publishes `/image_top/rgb` itself while it is playing. On the real robot
+start the RealSense D455 by hand from inside the manipulator container (`realsense2_camera` is
+not installed on the host), before `collect.launch.py mode:=real`:
+
+```
+mros
+ros2 run realsense2_camera realsense2_camera_node --ros-args \
+  -r __node:=image_top -r __ns:=/ \
+  -r /image_top/color/image_raw:=/image_top/rgb \
+  -r /image_top/color/camera_info:=/image_top/camera_info \
+  -p enable_depth:=false -p enable_infra1:=false -p enable_infra2:=false \
+  -p enable_gyro:=false -p enable_accel:=false -p enable_color:=true \
+  -p rgb_camera.color_profile:=1280,800,30
+```
+
+Colour only, 1280 x 800 at 30 fps, on `/image_top/rgb` and `/image_top/camera_info`. Check it
+with `ros2 topic hz /image_top/rgb`. The command does not fix auto-exposure.
+
+"No RealSense devices were found!" while `lsusb` on the host shows the D455: the camera was
+plugged in (or enumerated) after the container started, so the container's `/dev` has no node
+for it (`ls /dev/video*` in the container is empty). Restart the container with the camera
+connected (`docker restart movensys_manipulator_container`, which stops everything running in
+it).
+
 ## Camera feed
 source /opt/ros/jazzy/setup.bash
 ros2 run rqt_image_view rqt_image_view /image_top/rgb

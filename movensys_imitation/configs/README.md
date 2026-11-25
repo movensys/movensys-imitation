@@ -7,7 +7,7 @@ Draccus YAML fragments for `movensys-train` / `movensys-eval`.
 | `flow_matching.yaml` | Flow Matching (`flow_matching_unet`) with the same settings |
 | `act.yaml` | ACT default variant; matched / no-VAE variants are CLI overrides |
 | `pusht_sim.yaml` | stage 2 task: dataset `movensys/pusht_cr3a_sim_v3` (episodes 60 to 64 held out), 256 px frames resized to 96 (crop 84), 20 k steps, no env eval |
-| `pusht_real.yaml` | added in Phase 4 |
+| `pusht_real.yaml` | stage 4 task: dataset `movensys/pusht_cr3a_real_v1` (frozen 66-episode copy, episodes 61 to 65 held out), same image and step settings as `pusht_sim.yaml`; run with `scripts/train_real.sh` |
 
 `--config_path` accepts several files separated by commas; later files deep-merge over
 earlier ones and CLI flags override both, e.g.

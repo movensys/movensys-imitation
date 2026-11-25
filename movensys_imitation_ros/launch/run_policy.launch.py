@@ -5,7 +5,8 @@ Guard, scorer, recorder, manager and policy_runner. Same preconditions as collec
 with ``teleop_source pose``; the policy runner fills the recording phase. Episodes are
 recorded like demonstrations into a separate dataset (``dataset`` argument), whose sidecar
 carries success and coverage per episode. ``s`` in
-``collect_keys`` starts; ``auto_start:=true`` runs ``n_episodes`` back to back.
+``collect_keys`` starts; ``auto_start:=true`` runs ``n_episodes`` back to back. An episode
+times out after ``max_steps`` frames (default 600, 60 s at 10 Hz; collection keeps 300).
 
     ros2 launch movensys_imitation_ros run_policy.launch.py mode:=sim \
         pretrained:=outputs/sim/diffusion_v3_s1/checkpoints/last/pretrained_model \
@@ -63,6 +64,7 @@ def launch_setup(context):
                 "seed_start": LaunchConfiguration("seed_start"),
                 "n_episodes": LaunchConfiguration("n_episodes"),
                 "auto_start": LaunchConfiguration("auto_start"),
+                "max_steps": LaunchConfiguration("max_steps"),
             },
         ),
         venv_process(
@@ -114,6 +116,11 @@ def generate_launch_description():
                 "seed_start", default_value="2000", description="first start-pose seed"
             ),
             DeclareLaunchArgument("n_episodes", default_value="10"),
+            DeclareLaunchArgument(
+                "max_steps", default_value="600",
+                description="episode time limit in frames at 10 Hz (600 = 60 s); "
+                "recorder.yaml keeps 300 for collection",
+            ),
             DeclareLaunchArgument(
                 "push_z", default_value=REAL_PUSH_Z,
                 description="mode:=real: Link6 z of the push plane (guard z_setpoint) [m]",

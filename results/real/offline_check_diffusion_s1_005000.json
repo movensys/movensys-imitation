@@ -1,0 +1,27 @@
+{
+  "pretrained": "outputs/real/diffusion_v1_s1/checkpoints/005000/pretrained_model",
+  "overrides": [
+    "--policy.noise_scheduler_type=DDIM",
+    "--policy.num_inference_steps=10"
+  ],
+  "episodes": [
+    61,
+    62,
+    63,
+    64,
+    65
+  ],
+  "frames": 1195,
+  "mean_err_mm": 26.484806060791016,
+  "p95_err_mm": 72.25896453857422,
+  "bias_mm": [
+    0.9922080039978027,
+    -4.932417392730713
+  ],
+  "direction_agreement": 0.37786774628879893,
+  "baseline_hold_mm": 13.310489654541016,
+  "baseline_repeat_mm": 5.321731090545654,
+  "baseline_repeat_direction_agreement": 0.9919028340080972,
+  "latency_ms_median": 9.3164859999888,
+  "latency_ms_p95": 595.0887392000141
+}

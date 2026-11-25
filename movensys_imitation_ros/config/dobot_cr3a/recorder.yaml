@@ -35,7 +35,8 @@ episode_manager:
     success_threshold: 0.90         # project definition (scoring.SUCCESS_THRESHOLD); keep the two equal
     success_hold: 5             # consecutive /pusht/score samples at or above the threshold before
                                 # the episode ends on success (0.5 s at the scorer's 10 Hz)
-    max_steps: 300              # frames at fps (30 s), as gym-pusht
+    max_steps: 300              # frames at fps (30 s), as gym-pusht; run_policy.launch.py
+                                # overrides it with its max_steps argument (default 600)
     min_home_clearance: 0.04    # m between the tip edge and the T outline at the home point
     discard_on_timing_fault: true
     keep_failures: true         # P2.6 keeps successes only, using the sidecar's success flag
