@@ -24,6 +24,12 @@ HOME_CANDIDATES = ((-0.03, 0.08), (-0.25, 0.08), (0.19, 0.08))
 FIRST_COLLECTION_SEED = 1000
 """Collection seeds are 1000 and up (plan Section 5); 0 to 49 evaluate."""
 
+START_UNIFORM = "uniform"
+START_NEAR_GOAL = "near_goal"
+START_MODES = (START_UNIFORM, START_NEAR_GOAL)
+"""Where the T starts (``start_mode``): anywhere in the inner rectangle at any yaw, or over the
+goal and badly rotated (extra data for the state the policy gets stuck in)."""
+
 REASON_DISCARD = "discard"
 REASON_STOP = "stop"
 REASON_SUCCESS = "success"
@@ -218,8 +224,25 @@ def pose_difference(a, b) -> tuple[float, float]:
     return d, dyaw
 
 
-def start_pose_for_seed(seed: int) -> tuple[float, float, float]:
-    return g.sample_start_pose(seed)
+def start_pose_for_seed(
+    seed: int,
+    start_mode: str = START_UNIFORM,
+    near_goal_radius: float = g.NEAR_GOAL_RADIUS,
+    near_goal_yaw_deg=tuple(math.degrees(v) for v in g.NEAR_GOAL_YAW_ERROR),
+) -> tuple[float, float, float]:
+    """Start pose of the T for ``seed`` under ``start_mode`` (one of :data:`START_MODES`).
+
+    ``near_goal_radius`` (m) and ``near_goal_yaw_deg`` (min, max size of the yaw error to the
+    goal) only apply to ``near_goal``; see :func:`geometry.sample_near_goal_pose`.
+    """
+    if start_mode == START_UNIFORM:
+        return g.sample_start_pose(seed)
+    if start_mode == START_NEAR_GOAL:
+        if len(near_goal_yaw_deg) != 2:
+            raise ValueError(f"near_goal_yaw_deg needs [min, max], got {list(near_goal_yaw_deg)}")
+        yaw_error = tuple(math.radians(float(v)) for v in near_goal_yaw_deg)
+        return g.sample_near_goal_pose(seed, float(near_goal_radius), yaw_error)
+    raise ValueError(f"start_mode {start_mode!r} is not one of {START_MODES}")
 
 
 def next_seed(sidecar: list[dict], first: int = FIRST_COLLECTION_SEED) -> int:

@@ -2,7 +2,8 @@
 episode_manager: the PushT episode loop (plan P2.4, Section 5 "Episode loop").
 
 Per episode: reset (guard to ``pose`` source, lift the tool, home it at the parking point
-farthest from the T's start footprint, teleport the T to ``sample_start_pose(seed)``, lower),
+farthest from the T's start footprint, teleport the T to its start pose for the seed
+(``start_mode``: ``sample_start_pose`` or ``sample_near_goal_pose``), lower),
 record (guard back to the teleop source, recorder ``~/start``), stop on coverage >= 0.95, on
 ``max_steps`` frames or on a service call, lift, take the authoritative score from the scorer
 service, then save or discard. Runs from the venv (``python -m``) and needs the guard, the
@@ -384,6 +385,10 @@ class EpisodeManager(Driver):
         self.teleop_source: str = p["teleop_source"]
         self.input_device: str = p["input_device"]
         self.seed = int(p["seed_start"])  # < 0: continue from the recorder's sidecar
+        self.start_mode: str = p["start_mode"]
+        self.near_goal_radius: float = p["near_goal_radius"]
+        self.near_goal_yaw_deg = tuple(p["near_goal_yaw_deg"])
+        self.start_pose_for(0)  # a bad start_mode or range stops the launch, not episode 1
         self.n_episodes = int(p["n_episodes"])
         self.auto_start: bool = p["auto_start"]
         self.lower_settle: float = p["lower_settle"]
@@ -409,6 +414,7 @@ class EpisodeManager(Driver):
         seeds_from = f"from {self.seed}" if self.seed >= 0 else "continuing from the sidecar"
         self.get_logger().info(
             f"episode_manager: seeds {seeds_from}, {self.n_episodes or 'unlimited'} episodes, "
+            f"start_mode {self.start_mode!r}, "
             f"teleop source {self.teleop_source!r}, operator {self.operator!r}, "
             f"auto_start={self.auto_start}; call ~/start"
         )
@@ -421,6 +427,9 @@ class EpisodeManager(Driver):
             "teleop_source": "stick",
             "input_device": "",  # sidecar provenance: quest | spacemouse (collect.launch.py)
             "seed_start": -1,  # < 0: one past the last seed in the sidecar (1000 if none)
+            "start_mode": mc.START_UNIFORM,  # uniform | near_goal (over the goal, badly rotated)
+            "near_goal_radius": g.NEAR_GOAL_RADIUS,  # m, T centroid from the goal's
+            "near_goal_yaw_deg": [math.degrees(v) for v in g.NEAR_GOAL_YAW_ERROR],  # min, max
             "n_episodes": 10,
             "auto_start": False,
             "success_threshold": mc.ManagerConfig.success_threshold,
@@ -601,15 +610,21 @@ class EpisodeManager(Driver):
             "placement_error_deg": round(math.degrees(check.dyaw), 2),
         }
 
+    def start_pose_for(self, seed: int) -> tuple[float, float, float]:
+        return mc.start_pose_for_seed(
+            seed, self.start_mode, self.near_goal_radius, self.near_goal_yaw_deg
+        )
+
     def episode(self, seed: int) -> None:
         self.stop_requested = self.discard_requested = False
         cfg = self.cfg
-        start_pose = g.sample_start_pose(seed)
+        start_pose = self.start_pose_for(seed)
         home, clearance = mc.choose_home(
             cfg.home_candidates, start_pose, cfg.min_home_clearance, self.sheet_origin
         )
         self.get_logger().info(
-            f"episode seed {seed}: T start {tuple(round(v, 3) for v in start_pose)}, "
+            f"episode seed {seed} ({self.start_mode}): T start "
+            f"{tuple(round(v, 3) for v in start_pose)}, "
             f"home {home} (clearance {clearance * 1000:.0f} mm)"
         )
 
@@ -642,7 +657,7 @@ class EpisodeManager(Driver):
         # Record.
         meta = mc.episode_meta(
             seed, start_pose, home, self.operator, self.mode,
-            {**reset_meta, "input_device": self.input_device},
+            {**reset_meta, "input_device": self.input_device, "start_mode": self.start_mode},
         )
         self.set_episode_meta(meta)
         self.scripted(False)

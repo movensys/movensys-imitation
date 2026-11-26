@@ -45,3 +45,31 @@ def test_start_pose_deterministic_and_inside_inner_square():
 def test_quaternion_round_trip():
     for yaw in (-3.0, -1.0, 0.0, 0.5, 2.9):
         assert g.quat_wxyz_to_yaw(*g.yaw_to_quat_wxyz(yaw)) == pytest.approx(yaw)
+
+
+def test_near_goal_pose_is_on_the_goal_and_badly_rotated():
+    assert g.sample_near_goal_pose(7) == g.sample_near_goal_pose(7)
+    assert g.sample_near_goal_pose(7) != g.sample_near_goal_pose(8)
+    lo, hi = g.NEAR_GOAL_YAW_ERROR
+    errors = []
+    for seed in range(1000, 1400):
+        pose = g.sample_near_goal_pose(seed)
+        c = g.transform_points(g.block_centroid_local()[None, :], pose)[0]
+        assert np.hypot(*c) <= g.NEAR_GOAL_RADIUS + 1e-9
+        assert -math.pi <= pose[2] < math.pi
+        error = (pose[2] - g.GOAL_YAW + math.pi) % (2 * math.pi) - math.pi
+        assert lo - 1e-9 <= abs(error) <= hi + 1e-9
+        errors.append(error)
+    assert min(errors) < 0 < max(errors)  # both directions
+    assert max(abs(e) for e in errors) > math.radians(170)
+
+
+def test_near_goal_pose_takes_radius_and_yaw_range():
+    for seed in range(50):
+        pose = g.sample_near_goal_pose(seed, 0.0, (math.radians(90), math.radians(90)))
+        c = g.transform_points(g.block_centroid_local()[None, :], pose)[0]
+        assert np.hypot(*c) == pytest.approx(0.0, abs=1e-12)
+        error = (pose[2] - g.GOAL_YAW + math.pi) % (2 * math.pi) - math.pi
+        assert abs(error) == pytest.approx(math.pi / 2)
+    with pytest.raises(ValueError):
+        g.sample_near_goal_pose(0, 0.04, (math.radians(120), math.radians(60)))

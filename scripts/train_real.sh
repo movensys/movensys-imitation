@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Train the policies on the real CR3A dataset (plan P4.6), one after the other.
 #   scripts/train_real.sh [seed] [policy ...]      default: seed 1, diffusion flow_matching act
-# Output: outputs/real/<policy>_v1_s<seed>/ with train.log next to the checkpoints. A policy
+# Output: outputs/real/<policy>_<tag>_s<seed>/ (tag from TAG, default v1_231ep, the dataset
+# snapshot of pusht_real.yaml; the 66-episode runs are <policy>_v1_s<seed>) with train.log next to the checkpoints. A policy
 # whose output directory already exists is skipped (LeRobot refuses to overwrite it).
 # Runs at nice 10 so the robot stack on the same machine keeps its CPU.
 set -uo pipefail
@@ -10,6 +11,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 source .venv/bin/activate
 export HF_HUB_OFFLINE=1
 
+tag="${TAG:-v1_231ep}"
 seed="${1:-1}"
 shift || true
 policies=("$@")
@@ -17,7 +19,7 @@ policies=("$@")
 
 mkdir -p outputs/real
 for policy in "${policies[@]}"; do
-    out="outputs/real/${policy}_v1_s${seed}"
+    out="outputs/real/${policy}_${tag}_s${seed}"
     if [ -e "$out" ]; then
         echo "$(date '+%F %T') skip $policy: $out exists"
         continue
@@ -33,8 +35,8 @@ for policy in "${policies[@]}"; do
     echo "$(date '+%F %T') start $policy seed $seed -> $out"
     nice -n 10 movensys-train \
         --config_path="movensys_imitation/configs/${policy}.yaml,${task}" \
-        --seed="$seed" --output_dir="$out" > "outputs/real/${policy}_v1_s${seed}.log" 2>&1
+        --seed="$seed" --output_dir="$out" > "outputs/real/${policy}_${tag}_s${seed}.log" 2>&1
     status=$?
-    mv "outputs/real/${policy}_v1_s${seed}.log" "$out/train.log" 2>/dev/null
+    mv "outputs/real/${policy}_${tag}_s${seed}.log" "$out/train.log" 2>/dev/null
     echo "$(date '+%F %T') done $policy seed $seed, exit $status"
 done

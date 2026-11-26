@@ -47,6 +47,11 @@ INNER_SIZE = (0.36, 0.18)
 GOAL_YAW = math.pi / 4
 """Goal orientation, as in gym-pusht (goal pose (256, 256, pi/4))."""
 
+NEAR_GOAL_RADIUS = 0.040
+"""Metres from the goal within which :func:`sample_near_goal_pose` puts the T's centroid."""
+NEAR_GOAL_YAW_ERROR = (math.radians(60.0), math.radians(180.0))
+"""Size of the yaw error to the goal (min, max) that :func:`sample_near_goal_pose` draws."""
+
 N_START_MARKS = 30
 """Start marks printed on the real sheet: seeds 0 to 29 of :func:`sample_start_pose`."""
 
@@ -106,6 +111,31 @@ def sample_start_pose(seed: int) -> tuple[float, float, float]:
     yaw = rng.uniform(-math.pi, math.pi)
     c = transform_points(block_centroid_local()[None, :], (0.0, 0.0, yaw))[0]
     return (float(cx - c[0]), float(cy - c[1]), float(yaw))
+
+
+def sample_near_goal_pose(
+    seed: int, radius: float = NEAR_GOAL_RADIUS, yaw_error=NEAR_GOAL_YAW_ERROR
+) -> tuple[float, float, float]:
+    """Deterministic start pose for ``seed`` on the goal but badly rotated.
+
+    The centroid is uniform in a disc of ``radius`` around the goal's (the sheet centre); the yaw
+    is :data:`GOAL_YAW` plus an error of either sign whose size is uniform in ``yaw_error``
+    (min, max, radians). This is the state a policy reaches when it brings the T over the goal
+    with the wrong orientation, which :func:`sample_start_pose` almost never starts from
+    (2026-11-25). The same seed gives a different pose here than in :func:`sample_start_pose`.
+    """
+    lo, hi = (float(v) for v in yaw_error)
+    if radius < 0.0 or not 0.0 <= lo <= hi <= math.pi:
+        raise ValueError(
+            f"near-goal start: need radius >= 0 and 0 <= min <= max <= pi rad of yaw error, "
+            f"got radius {radius}, yaw error ({lo}, {hi})"
+        )
+    rng = np.random.default_rng(seed)
+    r, phi = radius * math.sqrt(rng.uniform()), rng.uniform(-math.pi, math.pi)
+    error = rng.uniform(lo, hi) * (1.0 if rng.uniform() < 0.5 else -1.0)
+    yaw = (GOAL_YAW + error + math.pi) % (2 * math.pi) - math.pi
+    c = transform_points(block_centroid_local()[None, :], (0.0, 0.0, yaw))[0]
+    return (float(r * math.cos(phi) - c[0]), float(r * math.sin(phi) - c[1]), float(yaw))
 
 
 def start_marks() -> list[tuple[float, float, float]]:

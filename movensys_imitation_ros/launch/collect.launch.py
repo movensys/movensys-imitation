@@ -9,6 +9,9 @@ The scorer, the recorder and the manager need the venv, so they run as ``python 
 another shell.
 
     ros2 launch movensys_imitation_ros collect.launch.py mode:=sim operator:=name device:=spacemouse
+
+``start_mode:=near_goal`` starts every episode with the T over the goal but badly rotated
+instead of anywhere on the sheet (``near_goal_radius``, ``near_goal_yaw_deg`` in recorder.yaml).
 """
 
 import os
@@ -51,6 +54,7 @@ def launch_setup(context):
                 "teleop_source": LaunchConfiguration("source"),
                 "input_device": LaunchConfiguration("device"),
                 "seed_start": LaunchConfiguration("seed_start"),
+                "start_mode": LaunchConfiguration("start_mode"),
                 "n_episodes": LaunchConfiguration("n_episodes"),
                 "auto_start": LaunchConfiguration("auto_start"),
             },
@@ -88,6 +92,11 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "seed_start", default_value="-1",
                 description="< 0: continue after the last seed in the dataset sidecar",
+            ),
+            DeclareLaunchArgument(
+                "start_mode", default_value="uniform",
+                description="T start poses: uniform | near_goal (over the goal, badly rotated; "
+                "radius and yaw range in recorder.yaml)",
             ),
             DeclareLaunchArgument("n_episodes", default_value="10"),
             DeclareLaunchArgument(

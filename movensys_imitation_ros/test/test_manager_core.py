@@ -176,3 +176,21 @@ def test_check_placement_refuses_a_t_under_the_parked_tip():
     pose = (HOME_SHEET[0], HOME_SHEET[1] + 0.01, 0.0)  # in tolerance of itself, under the tip
     p = mc.check_placement(pose, 0.1, pose, HOME_SHEET, *TOL)
     assert not p.ok and "parked tip" in p.note
+
+
+def test_start_pose_for_seed_follows_the_start_mode():
+    assert mc.start_pose_for_seed(1000) == g.sample_start_pose(1000)
+    assert mc.start_pose_for_seed(1000, mc.START_NEAR_GOAL) == g.sample_near_goal_pose(1000)
+    narrow = mc.start_pose_for_seed(1000, mc.START_NEAR_GOAL, 0.0, (90.0, 90.0))
+    assert narrow == g.sample_near_goal_pose(1000, 0.0, (math.pi / 2, math.pi / 2))
+    with pytest.raises(ValueError):
+        mc.start_pose_for_seed(1000, "goal")
+    with pytest.raises(ValueError):
+        mc.start_pose_for_seed(1000, mc.START_NEAR_GOAL, 0.04, (60.0,))
+
+
+def test_choose_home_clears_every_near_goal_start():
+    for seed in range(1000, 1400):
+        pose = mc.start_pose_for_seed(seed, mc.START_NEAR_GOAL)
+        _, clearance = mc.choose_home(mc.HOME_CANDIDATES, pose, 0.04, (-0.03, -0.05))
+        assert clearance >= 0.04

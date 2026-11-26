@@ -30,6 +30,11 @@ episode_manager:
     seed_start: -1              # < 0: one past the last seed in meta/movensys_episodes.jsonl
                                 # (1000 if the dataset is new; collection seeds are 1000 and up,
                                 # plan Section 5). Set a value to start elsewhere.
+    start_mode: uniform         # uniform: sample_start_pose(seed), anywhere in the inner rectangle
+                                # near_goal: over the goal but badly rotated, the state the
+                                # policy could not solve (2026-11-25); collect.launch.py start_mode
+    near_goal_radius: 0.040     # m, near_goal: T centroid within this of the goal's
+    near_goal_yaw_deg: [60.0, 180.0]   # near_goal: size of the yaw error to the goal, either sign
     n_episodes: 10              # with auto_start; 0 = until ~/abort
     auto_start: false           # true: after the first ~/start, run n_episodes back to back
     success_threshold: 0.90         # project definition (scoring.SUCCESS_THRESHOLD); keep the two equal

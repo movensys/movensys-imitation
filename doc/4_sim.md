@@ -351,10 +351,18 @@ lives in memory, so by default (`seed_start` negative) the manager reads the sid
 first `~/start` and continues one past the largest seed recorded there, 1000 for a new dataset;
 sessions then append without repeating start poses. Pass `seed_start:=<n>` to start elsewhere.
 
+`start_mode:=near_goal` changes where the T starts: instead of `sample_start_pose(seed)`
+(anywhere in the inner rectangle, any yaw) the manager uses `sample_near_goal_pose(seed)`, with
+the T's centroid within `near_goal_radius` (40 mm) of the goal's and the yaw off the goal's by
+`near_goal_yaw_deg` (60 to 180 deg, either sign). This adds demonstrations of the state the
+policy gets stuck in, the T over the goal but badly rotated. Seeds keep counting from the
+sidecar, and each line records its `start_mode` and `start_pose`; the same seed number gives a
+different pose in the two modes.
+
 1. **Reset**: guard source `pose` (the arm holds), `~/lift` up (`lift_height` 0.08 m above the
    latched plane, ramped at the step limit), home to the `task.yaml` `home_candidates` entry
    farthest from the T's start footprint (`manager_core.choose_home`, at least
-   `min_home_clearance` from the outline), teleport the T to `sample_start_pose(seed)` (2 mm,
+   `min_home_clearance` from the outline), teleport the T to its start pose (2 mm,
    1 deg, three tries, then 0.5 s at rest), lower, `lower_settle`.
 2. **Record**: `episode_meta` set on the recorder, guard source back to `teleop_source`
    (`stick`), recorder `~/start`. Stops once coverage >= 0.90 (`/pusht/score` field 0) has
@@ -382,7 +390,7 @@ the next redo replaces it).
 source env.bash
 colcon build --symlink-install --base-paths movensys_imitation_ros --packages-select movensys_imitation_ros
 source env.bash
-ros2 launch movensys_imitation_ros collect.launch.py mode:=sim operator:=name n_episodes:=10   # seed_start:=<n> to override
+ros2 launch movensys_imitation_ros collect.launch.py mode:=sim operator:=name n_episodes:=10   # seed_start:=<n> to override; start_mode:=near_goal for rotated starts on the goal
 python -m movensys_imitation_ros.collect_keys      # s start, x stop+save, d discard, r redo last, a abort, q
 ros2 topic echo /episode_manager/state             # idle | reset:* | record:<n> | end:* | fault:*
 ```
