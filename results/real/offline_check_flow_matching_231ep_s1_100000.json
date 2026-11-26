@@ -1,0 +1,36 @@
+{
+  "pretrained": "outputs/real/flow_matching_v1_231ep_s1/checkpoints/100000/pretrained_model",
+  "overrides": [
+    "--policy.fm_num_steps=4"
+  ],
+  "episodes": [
+    61,
+    62,
+    63,
+    64,
+    65,
+    100,
+    125,
+    150,
+    175,
+    200,
+    226,
+    227,
+    228,
+    229,
+    230
+  ],
+  "frames": 3171,
+  "mean_err_mm": 14.824514389038086,
+  "p95_err_mm": 43.504615783691406,
+  "bias_mm": [
+    1.186134696006775,
+    0.8930469751358032
+  ],
+  "direction_agreement": 0.6358208955223881,
+  "baseline_hold_mm": 13.31338119506836,
+  "baseline_repeat_mm": 5.29998779296875,
+  "baseline_repeat_direction_agreement": 0.991044776119403,
+  "latency_ms_median": 8.233970002038404,
+  "latency_ms_p95": 236.36236849415582
+}

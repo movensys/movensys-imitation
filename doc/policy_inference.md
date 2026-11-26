@@ -15,6 +15,7 @@ ros2 launch movensys_imitation_ros run_policy.launch.py mode:=real \
 python -m movensys_imitation_ros.score_viewer
 ```
 
+# 3. starting the collection
 ```
 python -m movensys_imitation_ros.collect_keys      # s starts the first episode; a aborts
 ```
